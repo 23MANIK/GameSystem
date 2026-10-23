@@ -443,8 +443,8 @@ export default class SystemDiagram {
   buildNodes(scale) {
     const gs = this.gameState;
     for (const node of Object.values(this.nodes)) {
-      // Phone layout: arrow anchors aren't drawn (they showed as stray "Place server" slots)
-      if (node.virtual && this.vertical) continue;
+      // Arrow anchors are never drawn (they showed as stray "Place server" slots)
+      if (node.virtual) continue;
       const el = document.createElement('div');
       const isSlot = node.role !== 'users' && this.slotRole === node.role && !gs.isPlaced(node.role);
       el.className = `sd-node role-${node.role}${isSlot ? ' sd-slot' : ''}`;
