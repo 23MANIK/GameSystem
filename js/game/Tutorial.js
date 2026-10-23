@@ -52,7 +52,7 @@ const LEVEL_1_STEPS = [
     text: (gs, ctx) => {
       const part = SERVER_PARTS[ctx?.partId || gs.serverStatus?.busiest || 'ram'];
       const pct = Math.round((gs.serverStatus?.usage?.[part.id] || 0.8) * 100);
-      return `${part.icon} <strong>${part.short}</strong> is at <strong>${pct}%</strong>, so it will run out first: your <em>bottleneck</em>. ${part.whenFull} Tap <strong>Server</strong> (or your server on the map) and buy a bigger ${part.short}.`;
+      return `${part.icon} <strong>${part.short}</strong> is at <strong>${pct}%</strong>, so it will run out first: your <em>bottleneck</em>. ${part.whenFull} Tap <strong>Server</strong> (or your server on the map, then <strong>Upgrade</strong>) and buy a bigger ${part.short}.`;
     },
     highlight: '#nav-server',
     showInBuilder: true,

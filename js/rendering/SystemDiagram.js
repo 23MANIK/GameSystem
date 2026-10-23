@@ -108,6 +108,25 @@ function peakOf(status, role) {
   return usage ? Math.max(...Object.values(usage)) : 0;
 }
 
+/**
+ * The part of a machine closest to (or past) its limit, for the bar on its card:
+ * CPU, RAM, disk speed, network, or disk space on the machine that holds the data.
+ */
+function worstOf(status, role) {
+  const usage = status?.servers?.[role]?.usage || {};
+  let worst = { value: 0, label: '', part: null };
+  for (const partId of PART_ORDER) {
+    const v = usage[partId] || 0;
+    if (v > worst.value) worst = { value: v, label: SERVER_PARTS[partId].short, part: partId };
+  }
+  const space = status?.space;
+  if (space && space.role === role && space.capacity > 0) {
+    const v = status.diskFull ? Math.max(1, space.pct) : space.pct;
+    if (v >= worst.value) worst = { value: v, label: 'Space', part: 'space' };
+  }
+  return worst;
+}
+
 /** Point on a horizontal-ish cubic curve between a and b (t in 0..1). */
 function curvePoint(e, t) {
   const { x1, y1, x2, y2, cx1, cy1, cx2, cy2 } = e;
@@ -266,8 +285,14 @@ export default class SystemDiagram {
     const colSpacing = (flowLen - marginGuess * 2) / Math.max(1, colCount);
     let scale, NW, NH;
     if (vertical) {
-      // Phone: cards as wide as fit three across, as tall as the rows allow
-      const cardW = Math.min(104, W * 0.27);
+      // Phone: cards as wide as the busiest row allows (1, 2 or 3 across), as tall as the rows allow
+      const appRows = cols.includes('app') ? Math.min(Math.max(1, p.appCount), rowsCap) : 0;
+      const lanes = 1 + (sideAbove ? 1 : 0) + (p.queue ? 1 : 0);
+      const dataRow = ['cache', 'db', 'blob'].filter(r => p[r]).length;
+      const across = Math.max(1, dataRow, lanes + Math.max(0, appRows - 1));
+      const cardW = across === 1 ? Math.min(150, W * 0.42)
+        : across === 2 ? Math.min(108, W * 0.29)
+        : Math.min(104, W * 0.27);
       const cardH = Math.max(46, Math.min(72, colSpacing * 0.72));
       scale = Math.max(0.62, Math.min(0.9, cardW / 128));
       NW = cardH;  // extent along the flow (screen height)
@@ -377,6 +402,9 @@ export default class SystemDiagram {
     if (nothing) {
       this.emptyEl.innerHTML = '<div class="sd-empty-icon">🏗️</div><strong>No servers yet</strong><span>Tap <b>Server</b> below to build your first machine.</span>';
     }
+    // Phone: the hint goes just under the Users card instead of on top of it
+    const u = this.nodes.users;
+    this.emptyEl.style.top = nothing && vertical && u ? `${u.y + u.h / 2 + 24}px` : '';
   }
 
   resizeCanvas(W, H) {
@@ -476,8 +504,10 @@ export default class SystemDiagram {
           <div class="sd-load"><span class="sd-load-fill"></span><span class="sd-load-pct"></span></div>
           <span class="sd-badge" hidden></span>
           <button type="button" class="sd-info" aria-label="${role.name} details">i</button>`;
-        el.title = `${role.name}: click to upgrade`;
-        el.addEventListener('click', () => this.handlers.onNodeClick?.(node.role));
+        // Tap a machine → its usage details (all parts). Upgrading starts from the
+        // Upgrade button there, so a tap never jumps straight into buying.
+        el.title = `${role.name}: tap for usage details`;
+        el.addEventListener('click', (e) => { e.stopPropagation(); this.toggleDetails(node.id); });
       }
       el.querySelector('.sd-info')?.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -685,7 +715,8 @@ export default class SystemDiagram {
         continue;
       }
       if (node.el.classList.contains('sd-slot')) continue;
-      const peak = peakOf(status, node.role);
+      const worst = worstOf(status, node.role);
+      const peak = worst.value;
       const down = node.role === 'app' && node.index >= n - crashed;
       const fill = node.el.querySelector('.sd-load-fill');
       const pct = node.el.querySelector('.sd-load-pct');
@@ -693,7 +724,8 @@ export default class SystemDiagram {
         fill.style.width = down ? '0%' : `${Math.min(100, Math.round(peak * 100))}%`;
         fill.dataset.level = peak > 1 ? 'over' : peak >= 0.8 ? 'warn' : 'ok';
       }
-      if (pct) pct.textContent = down ? '—' : status ? `${Math.round(peak * 100)}%` : '';
+      if (pct) pct.textContent = down ? '—' : status ? `${worst.label} ${Math.round(peak * 100)}%`.trim() : '';
+      if (pct) pct.title = down || !status ? '' : `Busiest part: ${worst.label} at ${Math.round(peak * 100)}% of its limit`;
       node.el.classList.toggle('is-over', peak > 1 && !down);
       node.el.classList.toggle('is-warn', peak >= 0.8 && peak <= 1 && !down);
       node.el.classList.toggle('is-down', down);
@@ -707,8 +739,12 @@ export default class SystemDiagram {
         else if (node.role === 'app' && node.index > 0) text = ''; // tier-wide badges once
         else if (peak > 1) text = 'QUEUE';
         else if (status && status.bottleneckRole === node.role && peak >= 0.6) text = 'BOTTLENECK';
+        // Name the part that is running out: "BOTTLENECK · RAM", "QUEUE · NET"
+        let part = '';
+        if (text === 'QUEUE') part = worst.label;
+        if (text === 'BOTTLENECK') part = worst.label; // same part the bar shows
         badge.hidden = !text || !live;
-        badge.textContent = text;
+        badge.textContent = part ? `${text} · ${part.toUpperCase()}` : text;
         badge.dataset.kind = text.toLowerCase().replace(' ', '-');
       }
       const sub = node.el.querySelector('.sd-sub');

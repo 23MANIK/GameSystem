@@ -346,3 +346,28 @@ body.level-intro-open .guide-bubble { display: none !important; }
 .fb-send { width: 100%; }
 .fb-done { text-align: center; padding: 12px 0; }
 .fb-done-icon { font-size: 40px; }
+
+/* Game speed button (1× / 2× / 4×) next to the level badge */
+.hud-speed {
+  flex: none;
+  min-width: 44px;
+  height: 38px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font-family: var(--font-title);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+.hud-speed:hover { border-color: var(--accent-cyan-border); }
+.hud-speed.fast {
+  color: var(--accent-amber);
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.1);
+}
+.hud-center { display: flex; align-items: center; }

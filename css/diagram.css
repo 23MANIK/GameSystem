@@ -311,7 +311,7 @@
   z-index: 2;
 }
 .sd-info:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
-.sd-node .sd-badge { right: calc(26px * var(--sd-scale)); }
+.sd-node .sd-badge { right: calc(26px * var(--sd-scale)); white-space: nowrap; }
 
 .sd-details {
   position: absolute;

@@ -14,6 +14,7 @@ import { runningCostPerMinute, serverCost } from '../data/serverParts.js';
 import { ROLES, rolesForLevel, roleForComponent } from '../data/roles.js';
 
 const SAVE_KEY = 'scale_architect_save_v4'; // v4: machines map, levels 2–7
+const LEVEL_START_KEY = 'scale_architect_level_start_v4'; // the save as each level began
 
 export default class GameState {
   constructor() {
@@ -208,6 +209,34 @@ export default class GameState {
       return true;
     } catch (err) {
       console.error('Failed to load game state:', err);
+      return false;
+    }
+  }
+
+  /** Remember the game as it was when this level began (for "Retry level" after a crash). */
+  snapshotLevelStart() {
+    try {
+      localStorage.setItem(LEVEL_START_KEY, JSON.stringify(this.toJSON()));
+    } catch (err) { /* private mode: no retry point */ }
+  }
+
+  /** Is there a saved start for the level being played right now? */
+  hasLevelStart() {
+    try {
+      const data = JSON.parse(localStorage.getItem(LEVEL_START_KEY) || 'null');
+      return Boolean(data && data.productId === this.productId && data.level === this.level);
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /** Put the level-start save back as the current save. Returns false if there is none. */
+  restoreLevelStart() {
+    if (!this.hasLevelStart()) return false;
+    try {
+      localStorage.setItem(SAVE_KEY, localStorage.getItem(LEVEL_START_KEY));
+      return true;
+    } catch (err) {
       return false;
     }
   }

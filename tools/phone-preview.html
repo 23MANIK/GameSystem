@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phone preview</title>
+  <!-- Local testing only: shows the game in an iPhone-sized frame (375 × 812). -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #05070d; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font: 12px system-ui, sans-serif; color: #8b98ad; }
+    .phone { width: 375px; height: 812px; max-height: calc(100vh - 40px); border: 10px solid #1c2333; border-radius: 36px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+    iframe { width: 100%; height: 100%; border: 0; display: block; }
+    button { font: inherit; color: inherit; background: #141b2a; border: 1px solid #2a3448; border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div>Phone preview · 375 × 812 <button onclick="document.getElementById('f').src='/'">Reload game</button></div>
+  <div class="phone"><iframe id="f" src="/"></iframe></div>
+</body>
+</html>

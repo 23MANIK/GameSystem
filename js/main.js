@@ -25,12 +25,15 @@ import InfoTips, { infoButton } from './ui/InfoTips.js';
 import { linkTerms } from './ui/Glossary.js';
 import NotificationsPanel from './ui/NotificationsPanel.js';
 import GoalsPanel from './ui/GoalsPanel.js';
-import BuildingGallery from './ui/BuildingGallery.js';
 import LevelsPanel from './ui/LevelsPanel.js';
 import LevelIntro from './ui/LevelIntro.js';
 import MoneyPanel from './ui/MoneyPanel.js';
 import Presence from './game/Presence.js';
 import ProductPicker from './ui/ProductPicker.js';
+import CrashScreen from './ui/CrashScreen.js';
+
+// Seconds of game time at 0 coins, losing money, before the system crashes
+const CRASH_AFTER_SECONDS = 40;
 import { evaluateChallenges } from './game/Challenges.js';
 
 import { PART_ORDER, SERVER_PARTS } from './data/serverParts.js';
@@ -112,6 +115,14 @@ class ScaleArchitect {
     btnContinue.addEventListener('click', () => {
       this.startGame(introScreen);
     });
+
+    // "Retry level" after a crash reloads the page: go straight back into the game
+    let autoStart = false;
+    try {
+      autoStart = sessionStorage.getItem('sa-autostart') === '1';
+      sessionStorage.removeItem('sa-autostart');
+    } catch (e) { /* private mode */ }
+    if (autoStart && hasSave) this.startGame(introScreen);
   }
 
   startGame(introScreen) {
@@ -167,7 +178,7 @@ class ScaleArchitect {
 
   initRendering() {
     this.diagram = new SystemDiagram(document.getElementById('game-world'), this.gameState, {
-      // Click a machine → its tab in the Server Builder
+      // Upgrade button in a machine's details → its tab in the Server Builder
       onNodeClick: (role) => this.openServerBuilder(role),
       // Click the glowing slot → place the machine that's waiting
       onSlotClick: (role) => {
@@ -220,15 +231,15 @@ class ScaleArchitect {
       this.openServerBuilder(tab);
     });
 
+    this.crashScreen = new CrashScreen({
+      onRetry: () => {
+        if (!this.gameState.restoreLevelStart()) return;
+        try { sessionStorage.setItem('sa-autostart', '1'); } catch (e) { /* private mode */ }
+        location.reload();
+      },
+      onHome: () => location.reload()
+    });
     this.moneyPanel = new MoneyPanel(document.getElementById('panel-body'), this.gameState);
-    // Buildings: 3D gallery of every machine, with level-by-level upgrades
-    this.buildingGallery = new BuildingGallery(document.getElementById('panel-body'), this.gameState, this.notifications, (role, opts = {}) => {
-      if (opts.place) { this.closePanel(); this.resumePlacement(); return; }
-      this.openServerBuilder(role);
-    }, () => {
-      this.diagram.update(true);
-      this.hud.update();
-    }, () => this.activePanel === 'buildings');
     this.levelsPanel = new LevelsPanel(document.getElementById('panel-body'), this.gameState, this.notifications, () => {
       this.activePanel = null;
       this.togglePanel('guestbook');
@@ -417,12 +428,15 @@ class ScaleArchitect {
   startLevelWithIntro() {
     const gs = this.gameState;
     if (gs.introSeenLevel === gs.level) {
+      // Older saves made before "Retry level" existed: start counting from here
+      if (!gs.hasLevelStart() && gs.coins > 0) gs.snapshotLevelStart();
       this.startGameLoop();
       return;
     }
     this.levelIntro.open(gs, () => {
       gs.introSeenLevel = gs.level;
       gs.save();
+      gs.snapshotLevelStart();
       this.guide.render();
       this.startGameLoop();
     });
@@ -551,7 +565,7 @@ class ScaleArchitect {
       return;
     }
 
-    const titles = { guestbook: '📖 Guestbook App', goals: '🎯 Goals', levels: '🗺️ Levels', money: '💰 Money', notifications: '🔔 Notifications', buildings: '🏗️ Build' };
+    const titles = { guestbook: '📖 Guestbook App', goals: '🎯 Goals', levels: '🗺️ Levels', money: '💰 Money', notifications: '🔔 Notifications' };
     document.getElementById('panel-title').textContent = titles[panelType] || 'Panel';
 
     if (panelType === 'guestbook') this.guestbookPanel.render();
@@ -563,7 +577,6 @@ class ScaleArchitect {
       this.levelsPanel.render('level');
     }
     if (panelType === 'money') this.moneyPanel.render();
-    if (panelType === 'buildings') this.buildingGallery.render();
     if (panelType === 'notifications') this.notificationsPanel.render();
 
     const sidePanel = document.getElementById('side-panel');
@@ -607,7 +620,6 @@ class ScaleArchitect {
     if (this.activePanel === 'levels' || this.activePanel === 'level') this.levelsPanel.update();
     if (this.levelPop && !this.levelPop.hidden && !document.querySelector('.info-pop:not([hidden])')) this.renderLevelPop();
     if (this.activePanel === 'money') this.moneyPanel.update();
-    if (this.activePanel === 'buildings') this.buildingGallery.update();
     if (this.moneyPop && !this.moneyPop.hidden && !document.querySelector('.info-pop:not([hidden])')) {
       const body = this.moneyPop.querySelector('.level-pop-body');
       const top = body.scrollTop;
@@ -698,7 +710,12 @@ class ScaleArchitect {
   startGameLoop() {
     this.isRunning = true;
     this.tickInterval = setInterval(() => {
-      if (!this.gameState.isPaused) this.gameTick();
+      // Speed button: 2× or 4× runs that many game steps per tick
+      const steps = this.gameState.speed || 1;
+      for (let i = 0; i < steps; i++) {
+        if (!this.isRunning || this.gameState.isPaused || this.gameState.levelCompleted) break;
+        this.gameTick();
+      }
     }, this.tickRate);
   }
 
@@ -723,7 +740,9 @@ class ScaleArchitect {
     if (spike.ended) this.onSpikeEnded(spike.ended);
 
     // 1. Users arrive or leave, coins come in (and are lost while requests fail)
+    const before = { revenue: gs.economy.revenue, spent: gs.economy.cost + gs.economy.penalties, users: gs.users };
     this.resourceManager.tick(this.levelSystem, seconds);
+    if (this.checkBankrupt(seconds, before)) return;
 
     // Level 1: everyone in town who wants it is here; growth stops
     const audience = gs.levelDef().audience;
@@ -760,6 +779,44 @@ class ScaleArchitect {
 
     this.updateTraffic();
     this.updateActivePanel();
+  }
+
+  /**
+   * Out of coins with no way back: 0 coins, money out ≥ money in, and users
+   * no longer growing. After 40 game-seconds like that the system crashes.
+   * Returns true when it just crashed.
+   */
+  checkBankrupt(seconds, before) {
+    const gs = this.gameState;
+    const earned = gs.economy.revenue - before.revenue;
+    const spent = gs.economy.cost + gs.economy.penalties - before.spent;
+    const stuck = gs.coins < 1 && earned <= spent && gs.users <= before.users;
+    if (!stuck) {
+      if (this.brokeSeconds > 0) this.notifications.show('💰 Coins are coming in again. Crash avoided!', 'success', 4000);
+      this.brokeSeconds = 0;
+      return false;
+    }
+    if (!this.brokeSeconds) {
+      this.notifications.show(`💸 Out of coins and losing money! Fix failing requests or win back users within ${CRASH_AFTER_SECONDS}s, or your system crashes.`, 'warning', 8000);
+    }
+    this.brokeSeconds = (this.brokeSeconds || 0) + seconds;
+    this.lastBurn = { earnedPerMin: earned * 60 / seconds, spentPerMin: spent * 60 / seconds };
+    if (this.brokeSeconds < CRASH_AFTER_SECONDS) return false;
+
+    // Crashed: stop the clock and show the crash screen
+    this.brokeSeconds = 0;
+    this.stopGameLoop();
+    this.closePanel?.();
+    const level = gs.levelDef();
+    this.crashScreen.open({
+      level: gs.level,
+      levelName: level.name,
+      earnedPerMin: this.lastBurn.earnedPerMin,
+      spentPerMin: this.lastBurn.spentPerMin,
+      users: Math.round(gs.users),
+      canRetry: gs.hasLevelStart()
+    });
+    return true;
   }
 
   onSpikeStarted(incident) {

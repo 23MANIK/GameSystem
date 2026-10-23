@@ -20,12 +20,33 @@ export default class HUD {
     this.gameState = gameState;
   }
 
+  /** Game speed: 1× → 2× → 4× → 1×. The game loop runs that many steps per tick. */
+  cycleSpeed() {
+    const gs = this.gameState;
+    const next = { 1: 2, 2: 4, 4: 1 }[gs.speed || 1] || 1;
+    gs.speed = next;
+    try { localStorage.setItem('sa-speed', String(next)); } catch (e) { /* private mode */ }
+    this.updateSpeed();
+  }
+
+  updateSpeed() {
+    const btn = document.getElementById('hud-speed');
+    if (!btn) return;
+    const sp = this.gameState.speed || 1;
+    btn.textContent = `${sp}×`;
+    btn.classList.toggle('fast', sp > 1);
+    btn.setAttribute('aria-label', `Game speed ${sp}×. Tap to change.`);
+  }
+
   init() {
+    try { this.gameState.speed = Number(localStorage.getItem('sa-speed')) || 1; } catch (e) { this.gameState.speed = 1; }
+    if (![1, 2, 4].includes(this.gameState.speed)) this.gameState.speed = 1;
     this.render();
     // Home and level card are wired once; the HUD re-renders its innards only
     this.container.addEventListener('click', (e) => {
       if (e.target.closest('#hud-home')) this.gameState.emit('goHome', {});
       if (e.target.closest('#hud-feedback')) openFeedback(`in game, level ${this.gameState.level}`);
+      else if (e.target.closest('#hud-speed')) this.cycleSpeed();
       else if (e.target.closest('#hud-coins-btn')) this.gameState.emit('openMoney', {});
       else if (e.target.closest('#hud-level') && !e.target.closest('.info-btn')) this.gameState.emit('openLevel', {});
     });
@@ -83,6 +104,7 @@ export default class HUD {
         </div>
 
         <div class="hud-center">
+          <button type="button" class="hud-speed" id="hud-speed" title="Game speed: tap for 2× or 4× to finish levels faster"></button>
           <button type="button" class="hud-levelcard" id="hud-level" title="About this level">
             <span class="hud-lv">Lv.${level.level}</span>
             <span class="hud-levelcard-body">
@@ -100,6 +122,8 @@ export default class HUD {
               ${infoButton('resources')}
             </div>
             <div class="hud-busiest-bars">${bars}</div>
+            <button type="button" class="term hud-rep-mini" data-info="latency" aria-label="Latency">📶<span id="hud-lat-mini"></span></button>
+            <button type="button" class="term hud-rep-mini" data-info="reputation" aria-label="Reputation">⭐<span id="hud-rep-mini"></span></button>
           </div>
           <div class="hud-stat latency">
             <span class="hud-icon hud-stat-icon">📶</span>
@@ -112,6 +136,7 @@ export default class HUD {
       </div>
     `;
 
+    this.updateSpeed();
     this.update();
   }
 
@@ -177,6 +202,13 @@ export default class HUD {
       lat.textContent = status ? `${ms}ms` : '–';
       lat.style.color = !status ? '' : ms < 60 ? 'var(--accent-cyan)' : ms < 120 ? 'var(--accent-amber)' : 'var(--accent-red)';
     }
+    // Phones: the same number in the bars strip
+    const latMini = document.getElementById('hud-lat-mini');
+    if (latMini) {
+      const ms = gs.metrics?.latency || 0;
+      latMini.textContent = status ? `${ms}ms` : '–';
+      latMini.style.color = lat?.style.color || '';
+    }
   }
 
   updateSpikeAndReputation() {
@@ -186,6 +218,9 @@ export default class HUD {
       const r = Math.round(gs.reputation ?? 100);
       rep.textContent = r;
       rep.style.color = r >= 80 ? 'var(--accent-green)' : r >= 50 ? 'var(--accent-amber)' : 'var(--accent-red)';
+      // Phones: the same number at the end of the bars strip
+      const mini = document.getElementById('hud-rep-mini');
+      if (mini) { mini.textContent = r; mini.style.color = rep.style.color; }
     }
     const spike = document.getElementById('hud-spike');
     const wrap = document.getElementById('hud-spike-wrap');

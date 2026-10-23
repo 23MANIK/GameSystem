@@ -119,7 +119,9 @@
   }
   .sb-tabs { overflow-x: auto; scrollbar-width: none; }
   .sb-tab { min-height: 40px; white-space: nowrap; }
-  .sb-options { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  /* All choices for a part on one row (3 or 4 cards) */
+  .sb-options { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)) !important; gap: 6px; }
+  .sb-option { padding: 7px 8px; min-width: 0; }
   .sb-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .modal-actions .btn { min-height: 44px; flex: 1; }
 
@@ -188,4 +190,84 @@
   .sb-summary-label .info-btn { display: none; }
   .sb-summary-value { font-size: 12px !important; }
   .modal-content.server-builder-modal .modal-actions { padding: 8px 12px; }
+}
+
+/* --- Phones: keep the server's CPU / RAM / disk / network bars visible --- */
+@media (max-width: 600px) {
+  /* A slim strip under the top bar (the tutorial points at these bars) */
+  .hud-busiest {
+    display: flex !important;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 110;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border-radius: 0;
+    border: 0;
+    border-bottom: 1px solid var(--border-glass);
+    background: rgba(10, 15, 28, 0.92);
+  }
+  .hud-busiest-head { display: none; }
+  .hud-busiest-bars {
+    flex: 1;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 2px 8px;
+  }
+  .hud-busiest .hud-res { grid-template-columns: auto 1fr auto !important; gap: 4px; font-size: 9px !important; }
+  .hud-busiest .hud-res-track { min-width: 12px; }
+
+  /* Everything that sat right under the top bar moves below the strip */
+  .sd-legend { top: 30px; }
+  .notification-container { top: 86px; }
+  .hud-spike-wrap { top: 86px; }
+  body.sheet-open .hud-busiest { visibility: hidden; }
+
+  /* "No servers yet" sits under the Users card instead of on top of it */
+  .sd-empty { transform: translate(-50%, 0); padding: 12px 18px; }
+
+  /* The top bar's blur would clip the strip and the spike badge, so let them show outside it */
+  .hud { overflow: visible; }
+
+  /* Buy button on one line */
+  .modal-actions .btn { white-space: nowrap; letter-spacing: 0.04em; padding-left: 10px; padding-right: 10px; }
+  .modal-actions #sb-cancel { flex: 0 1 34%; }
+}
+
+/* Phones: speed button matches the other top bar buttons */
+@media (max-width: 600px) {
+  .hud-speed { height: 44px; min-width: 38px; margin-right: 4px; padding: 0 4px; font-size: 13px; }
+  /* Make room for it: slightly tighter buttons and stats */
+  .hud { gap: 5px; }
+  .hud-left { gap: 5px; }
+  .hud-home { width: 40px; height: 44px; }
+  .hud-stat { padding: 4px 6px; }
+  .hud-lv { padding: 0 10px; }
+  .hud-levelcard { padding: 0 4px; }
+}
+
+/* Reputation: desktop shows it in the top bar; phones show it at the end of the bars strip */
+.hud-rep-mini { display: none; }
+@media (max-width: 600px) {
+  .hud-rep-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: none;
+    padding: 0 0 0 8px;
+    border-left: 1px solid var(--border-glass);
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--text-secondary);
+  }
+}
+
+/* Phones: longer badges ("BOTTLENECK · RAM") sit centered over the card so they never hang off it */
+@media (max-width: 600px) {
+  .sd-node .sd-badge { left: 50%; right: auto; transform: translateX(-50%); }
 }
