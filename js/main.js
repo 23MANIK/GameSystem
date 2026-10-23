@@ -25,6 +25,7 @@ import InfoTips, { infoButton } from './ui/InfoTips.js';
 import { linkTerms } from './ui/Glossary.js';
 import NotificationsPanel from './ui/NotificationsPanel.js';
 import GoalsPanel from './ui/GoalsPanel.js';
+import BuildingGallery from './ui/BuildingGallery.js';
 import LevelsPanel from './ui/LevelsPanel.js';
 import LevelIntro from './ui/LevelIntro.js';
 import MoneyPanel from './ui/MoneyPanel.js';
@@ -220,6 +221,14 @@ class ScaleArchitect {
     });
 
     this.moneyPanel = new MoneyPanel(document.getElementById('panel-body'), this.gameState);
+    // Buildings: 3D gallery of every machine, with level-by-level upgrades
+    this.buildingGallery = new BuildingGallery(document.getElementById('panel-body'), this.gameState, this.notifications, (role, opts = {}) => {
+      if (opts.place) { this.closePanel(); this.resumePlacement(); return; }
+      this.openServerBuilder(role);
+    }, () => {
+      this.diagram.update(true);
+      this.hud.update();
+    }, () => this.activePanel === 'buildings');
     this.levelsPanel = new LevelsPanel(document.getElementById('panel-body'), this.gameState, this.notifications, () => {
       this.activePanel = null;
       this.togglePanel('guestbook');
@@ -542,7 +551,7 @@ class ScaleArchitect {
       return;
     }
 
-    const titles = { guestbook: '📖 Guestbook App', goals: '🎯 Goals', levels: '🗺️ Levels', money: '💰 Money', notifications: '🔔 Notifications' };
+    const titles = { guestbook: '📖 Guestbook App', goals: '🎯 Goals', levels: '🗺️ Levels', money: '💰 Money', notifications: '🔔 Notifications', buildings: '🏗️ Buildings' };
     document.getElementById('panel-title').textContent = titles[panelType] || 'Panel';
 
     if (panelType === 'guestbook') this.guestbookPanel.render();
@@ -554,6 +563,7 @@ class ScaleArchitect {
       this.levelsPanel.render('level');
     }
     if (panelType === 'money') this.moneyPanel.render();
+    if (panelType === 'buildings') this.buildingGallery.render();
     if (panelType === 'notifications') this.notificationsPanel.render();
 
     const sidePanel = document.getElementById('side-panel');
@@ -597,6 +607,7 @@ class ScaleArchitect {
     if (this.activePanel === 'levels' || this.activePanel === 'level') this.levelsPanel.update();
     if (this.levelPop && !this.levelPop.hidden && !document.querySelector('.info-pop:not([hidden])')) this.renderLevelPop();
     if (this.activePanel === 'money') this.moneyPanel.update();
+    if (this.activePanel === 'buildings') this.buildingGallery.update();
     if (this.moneyPop && !this.moneyPop.hidden && !document.querySelector('.info-pop:not([hidden])')) {
       const body = this.moneyPop.querySelector('.level-pop-body');
       const top = body.scrollTop;

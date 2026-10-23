@@ -1,0 +1,202 @@
+/* ==========================================================================
+   BUILDINGS — isometric 3D gallery (js/ui/BuildingGallery.js)
+   ========================================================================== */
+
+.bg-wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.bg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bg-intro { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+.bg-coins {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: #fde68a;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-amber-dim);
+  border: 1px solid var(--accent-amber-border);
+}
+
+.bg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+.bg-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  background: rgba(19, 28, 46, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.bg-card:hover { border-color: var(--accent-cyan-border); transform: translateY(-1px); }
+.bg-card:focus-visible, .bg-chip:focus-visible, .bg-back:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+.bg-card.is-dim .bg-card-art .bg-svg { filter: saturate(0.35) brightness(0.75); }
+
+.bg-card-art {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 150px;
+  border-radius: 10px;
+  background: #0d1422;
+  overflow: hidden;
+}
+/* Shared Lv 1–4 frame (4:5), so a bigger level really is a bigger building */
+.bg-card-art .bg-svg { width: 120px; height: 150px; display: block; }
+
+.bg-pill {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+}
+.bg-up {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  background: var(--accent-amber);
+  color: #3b2503;
+}
+.bg-card-name { font-weight: 700; font-size: 14px; color: var(--text-primary); padding: 0 4px; }
+.bg-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 4px 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #cbd5e1;
+}
+.bg-cap { color: #5eead4; }
+.bg-muted { color: var(--text-secondary); font-family: inherit; }
+.bg-card-meta .bg-muted { font-family: var(--font-mono); }
+
+/* --- Detail --- */
+.bg-back {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #cbd5e1;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bg-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.bg-title h3 { margin: 2px 0; font-size: 20px; color: #f8fafc; }
+.bg-title .bg-muted { font-size: 12px; }
+.bg-cat { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-cyan); }
+.bg-lv {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 9px;
+  border-radius: 10px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f1f5f9;
+}
+
+.bg-hero {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 290px;
+  border-radius: 14px;
+  background: #0b111d;
+  border: 1px solid #1d273a;
+  overflow: hidden;
+}
+.bg-hero .bg-svg { width: 232px; height: 290px; display: block; }
+.bg-scaling {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f5b70a;
+  color: #3b2503;
+}
+
+.bg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.bg-chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid #2b3850;
+  background: transparent;
+  color: #cbd5e1;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bg-chip.on { background: #e2e8f0; border-color: #e2e8f0; color: #0f172a; }
+
+.bg-desc { margin: 0; font-size: 13px; line-height: 1.5; color: #cbd5e1; }
+.bg-note { margin: 0; font-size: 12px; color: #a5b4fc; }
+
+.bg-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bg-stats > div { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 12px; background: #172033; }
+.bg-stats span { font-size: 11px; color: var(--text-secondary); }
+.bg-stats strong { font-family: var(--font-mono); font-size: 18px; color: #f1f5f9; }
+.bg-stats strong.bg-cap { color: #5eead4; }
+.bg-stats small { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.bg-stats em, .bg-parts em { font-style: normal; color: #fde68a; }
+
+.bg-path { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.bg-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 2px;
+  border-radius: 10px;
+  border: 1px solid #2b3850;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.bg-step strong { font-family: var(--font-mono); font-size: 12px; }
+.bg-step.done { border-color: #1f6f5c; color: #a7f3d0; background: rgba(6, 214, 160, 0.06); }
+.bg-step.cur { border-color: var(--accent-cyan); color: #a7f3d0; background: rgba(6, 214, 160, 0.16); }
+
+.bg-parts { list-style: none; margin: 0; padding: 10px 12px; border-radius: 12px; background: #0b111d; border: 1px solid #1d273a; display: flex; flex-direction: column; gap: 5px; }
+.bg-parts li { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
+.bg-parts strong { font-family: var(--font-mono); font-weight: 600; color: #e2e8f0; }
+
+.bg-actions { display: flex; flex-direction: column; gap: 8px; }
+.bg-act { width: 100%; min-height: 46px; justify-content: center; }
+.bg-upgrade { background: var(--accent-amber); color: #3b2503; border: none; font-weight: 700; }
+.bg-upgrade:disabled { background: #2a3346; color: var(--text-secondary); cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-card { transition: none; }
+  .bg-card:hover { transform: none; }
+}

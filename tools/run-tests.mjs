@@ -122,6 +122,40 @@ await test('simulator: every level of every product computes without NaN', async
   }
 });
 
+// ─── 4b. Buildings: 3D gallery levels and upgrades ───
+await test('buildings: level follows parts, each upgrade grows exactly one level', async () => {
+  registry.setActiveProduct('guestbook');
+  const { buildingLevel, nextLevelUpgrade } = await imp('js/game/BuildingLevels.js');
+  const { cheapestServer, upgradeCost } = await imp('js/data/serverParts.js');
+  assert(buildingLevel(cheapestServer()) === 1, 'cheapest server should be Lv 1');
+  assert(buildingLevel({ cpu: 'cpu_8', ram: 'ram_8', storage: 'disk_nvme_xl', network: 'net_10g' }) === 4, 'biggest parts should be Lv 4');
+  for (const [gameLevel, maxLv] of [[1, 3], [5, 4]]) {
+    const gs = { level: gameLevel, codeFixes: {}, machines: { app: cheapestServer() }, getServerConfig(r) { return this.machines[r]; }, machineCount: () => 2 };
+    let lv = 1;
+    for (;;) {
+      const up = nextLevelUpgrade(gs, 'app');
+      if (up.blocked) break;
+      assert(up.level === lv + 1 && buildingLevel(up.config) === lv + 1, `game Lv ${gameLevel}: Lv ${lv} → ${up.level}`);
+      assert(up.cost === upgradeCost(gs.machines.app, up.config) * 2, 'upgrade is paid for every app server');
+      gs.machines.app = up.config;
+      lv = up.level;
+    }
+    assert(lv === maxLv, `game Lv ${gameLevel} should reach building Lv ${maxLv}, got ${lv}`);
+  }
+});
+
+await test('buildings: every type, level and state draws a valid SVG', async () => {
+  const { isoSVG } = await imp('js/components/IsoBuildings.js');
+  for (const type of ['server', 'lb', 'db', 'cache', 'queue', 'cdn', 'firewall', 'broker']) {
+    for (const lv of [1, 2, 3, 4]) {
+      for (const state of ['idle', 'processing', 'heavy', 'scaling', 'failed']) {
+        const svg = isoSVG(type, lv, state);
+        assert(svg.startsWith('<svg') && !/NaN|undefined/.test(svg), `${type} Lv ${lv} ${state}`);
+      }
+    }
+  }
+});
+
 // ─── 5. Balance: every level reachable with its new piece ───
 for (const id of Object.keys(registry.PACKS)) {
   await test(`${id}: every level is reachable (balance tool)`, () => {
