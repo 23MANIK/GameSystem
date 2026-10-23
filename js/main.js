@@ -551,7 +551,7 @@ class ScaleArchitect {
       return;
     }
 
-    const titles = { guestbook: '📖 Guestbook App', goals: '🎯 Goals', levels: '🗺️ Levels', money: '💰 Money', notifications: '🔔 Notifications', buildings: '🏗️ Buildings' };
+    const titles = { guestbook: '📖 Guestbook App', goals: '🎯 Goals', levels: '🗺️ Levels', money: '💰 Money', notifications: '🔔 Notifications', buildings: '🏗️ Build' };
     document.getElementById('panel-title').textContent = titles[panelType] || 'Panel';
 
     if (panelType === 'guestbook') this.guestbookPanel.render();
