@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Scale Architect — A system design strategy game inspired by Clash of Clans. Build, scale, and defend your social media platform architecture.">
+  <title>Scale Architect — System Design Game</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/grid.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/panels.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/level1.css">
+  <link rel="stylesheet" href="css/diagram.css">
+  <link rel="stylesheet" href="css/goals.css">
+  <link rel="stylesheet" href="css/hud.css">
+  <link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+  <div class="game-container" id="game-container">
+
+    <!-- ═══════════════════ TOP HUD ═══════════════════ -->
+    <div class="hud-container" id="hud-container"></div>
+
+    <!-- ═══════════════════ GAME WORLD ═══════════════════ -->
+    <div class="game-world" id="game-world">
+      <!-- Canvas for particle effects (data flow) -->
+      <canvas class="grid-canvas" id="particle-canvas"></canvas>
+
+      <!-- SVG layer for connection lines -->
+      <svg class="connection-layer" id="connection-layer" xmlns="http://www.w3.org/2000/svg"></svg>
+
+      <!-- Grid overlay for isometric tiles -->
+      <div class="grid-overlay" id="grid-overlay"></div>
+
+      <!-- Component layer for placed system components -->
+      <div class="component-layer" id="component-layer"></div>
+
+      <!-- Side panel (slides in from right) -->
+      <div class="sheet-scrim" id="sheet-scrim"></div>
+      <div class="side-panel closed" id="side-panel">
+        <div class="panel-header" id="panel-header">
+          <span class="sheet-handle" aria-hidden="true"></span>
+          <h2 class="panel-title" id="panel-title">Build</h2>
+          <button class="panel-close-btn" id="panel-close-btn" aria-label="Close panel">✕</button>
+        </div>
+        <div class="panel-body" id="panel-body">
+          <!-- Panel content injected by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ BOTTOM NAV ═══════════════════ -->
+    <nav class="nav-bar" id="nav-bar">
+      <button class="nav-btn" id="nav-server" data-panel="server" aria-label="Build or upgrade your server">
+        <span class="nav-icon">🖥️</span>
+        <span class="nav-label">Server</span>
+      </button>
+      <button class="nav-btn" id="nav-goals" data-panel="goals" aria-label="Level challenges and money">
+        <span class="nav-icon">🎯</span>
+        <span class="nav-label">Goals</span>
+      </button>
+      <button class="nav-btn" id="nav-alerts" data-panel="notifications" aria-label="Notifications">
+        <span class="nav-icon">🔔</span>
+        <span class="nav-label">Alerts</span>
+        <span class="nav-badge" id="nav-alerts-badge" style="display:none">0</span>
+      </button>
+    </nav>
+
+    <!-- ═══════════════════ GUIDE (TUTORIAL) ═══════════════════ -->
+    <div class="guide-bubble" id="guide-bubble" role="status" aria-live="polite" hidden></div>
+
+    <!-- ═══════════════════ PRODUCT PICKER (before a new game) ═══════════════════ -->
+    <div class="product-screen" id="product-screen" hidden></div>
+
+    <!-- ═══════════════════ MODAL OVERLAY ═══════════════════ -->
+    <div class="modal-backdrop" id="modal-backdrop" style="display:none">
+      <div class="modal-content" id="modal-content">
+        <!-- Modal content injected by JS -->
+      </div>
+    </div>
+
+    <!-- ═══════════════════ NOTIFICATION CONTAINER ═══════════════════ -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <!-- ═══════════════════ LEVEL UP OVERLAY ═══════════════════ -->
+    <div class="level-up-overlay" id="level-up-overlay" style="display:none">
+      <div class="level-up-content">
+        <div class="level-up-badge" id="level-up-badge">
+          <span class="level-up-number" id="level-up-number">2</span>
+        </div>
+        <h1 class="level-up-title">LEVEL UP!</h1>
+        <p class="level-up-name" id="level-up-name">First Growth</p>
+        <div class="level-up-unlocks" id="level-up-unlocks">
+          <!-- Unlocked items listed here -->
+        </div>
+        <button class="btn btn-primary level-up-continue" id="level-up-continue">Continue</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ EVENT ALERT OVERLAY ═══════════════════ -->
+    <div class="event-alert" id="event-alert" style="display:none">
+      <div class="event-alert-content">
+        <div class="event-alert-icon">⚠️</div>
+        <h2 class="event-alert-title" id="event-alert-title">INCIDENT DETECTED</h2>
+        <p class="event-alert-description" id="event-alert-description"></p>
+        <div class="event-alert-severity" id="event-alert-severity">HIGH</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ INTRO/WELCOME SCREEN ═══════════════════ -->
+    <div class="intro-screen" id="intro-screen">
+      <div class="intro-content">
+        <div class="intro-logo">
+          <span class="intro-icon">🏗️</span>
+          <h1 class="intro-title">SCALE<span class="accent">ARCHITECT</span></h1>
+          <p class="intro-subtitle">Build. Scale. Survive.</p>
+        </div>
+        <p class="intro-description">
+          Every big system starts as <strong>one machine</strong>. Pick its CPU, memory, storage and network,
+          launch a small app (a Guestbook, a link shortener like bit.ly, and more), and grow it to your first 100 users.
+          <br><br>
+          New parts of the system unlock level by level, from load balancers to caches to global scale.
+        </p>
+        <div class="intro-actions">
+          <button class="btn btn-primary btn-lg" id="btn-new-game">
+            <span>🚀</span> New Game
+          </button>
+          <button class="btn btn-secondary btn-lg" id="btn-continue-game" style="display:none">
+            <span>▶️</span> Continue
+          </button>
+        </div>
+        <p class="intro-live" id="intro-live" hidden></p>
+        <button type="button" class="intro-feedback" id="btn-feedback">💬 Send feedback</button>
+        <p class="intro-version">v1.0 — A System Design Strategy Game</p>
+      </div>
+
+      <!-- Animated background particles -->
+      <canvas class="intro-particles" id="intro-particles"></canvas>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════ MAIN GAME SCRIPT ═══════════════════ -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

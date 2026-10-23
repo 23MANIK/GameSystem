@@ -1,0 +1,451 @@
+/* ==========================================================================
+   SCALE ARCHITECT — ANIMATIONS & KEYFRAMES
+   Cyberpunk Motion Design, Holographic Effects, Particles & Transitions
+   ========================================================================== */
+
+/* ==========================================================================
+   1. CORE KEYFRAME DEFINITIONS
+   ========================================================================== */
+
+/* 1. Pulse Glow (Active / Powered Nodes) */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(6, 214, 160, 0.3), inset 0 0 10px rgba(6, 214, 160, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(6, 214, 160, 0.7), inset 0 0 18px rgba(6, 214, 160, 0.3);
+  }
+}
+
+/* 2. Pulse Border (Incidents / Event Alerts) */
+@keyframes pulse-border {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 1);
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+  }
+}
+
+/* 3. Float (Idle Floating Buildings / Isometric Elevation) */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* 4. Spin (Loading / Sync / Rotating Reticle) */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 5. Slide In Right (Panels / Drawers) */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 6. Slide Out Right (Panels Closing) */
+@keyframes slide-out-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* 7. Slide In Up (Modals / Overlays) */
+@keyframes slide-in-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 8. Fade In */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 9. Fade Out */
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 10. Shake (Damage / Critical Errors / Invalid Actions) */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px) rotate(-1deg); }
+  30% { transform: translateX(5px) rotate(1deg); }
+  45% { transform: translateX(-4px) rotate(-0.5deg); }
+  60% { transform: translateX(3px) rotate(0.5deg); }
+  75% { transform: translateX(-1px); }
+}
+
+/* 11. Data Flow (Dashed Network Cables) */
+@keyframes data-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+/* 12. Progress Fill */
+@keyframes progress-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* 13. Level Up Burst (Dramatics / Rewards) */
+@keyframes level-up-burst {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+    filter: brightness(2) blur(8px);
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+    filter: brightness(1.4) blur(0);
+  }
+  80% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+/* 14. Confetti Fall & Rotation */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100%) rotate(0deg) scale(0.8);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* 15. Warning Flash (Critical Event Warning) */
+@keyframes warning-flash {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.85);
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    background-color: rgba(185, 28, 28, 0.98);
+    box-shadow: 0 0 45px rgba(239, 68, 68, 0.9);
+  }
+}
+
+/* 16. Counter Up (Scale Pop on Metric increment) */
+@keyframes counter-up {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+    color: var(--accent-cyan);
+    text-shadow: 0 0 12px var(--accent-cyan);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 17. Bounce In (Elastic entrance for badges / cards) */
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 18. Ripple (Grid Click / Touch Blast) */
+@keyframes ripple {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+    border-width: 3px;
+  }
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+/* 19. Scan Line (Retro Cyber CRT Sweep) */
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
+}
+
+/* 20. Typing (Typewriter effect for cyber terminal feeds) */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* 21. Cyberpunk Neon Flicker */
+@keyframes neon-flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 10px var(--accent-cyan));
+  }
+  20%, 24%, 55% {
+    opacity: 0.4;
+    filter: none;
+  }
+}
+
+/* 22. Hologram Glitch */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-3px, 3px);
+  }
+  40% {
+    transform: translate(-3px, -3px);
+  }
+  60% {
+    transform: translate(3px, 3px);
+  }
+  80% {
+    transform: translate(3px, -3px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+/* ==========================================================================
+   2. UTILITY ANIMATION CLASSES
+   ========================================================================== */
+
+.animate-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-border-pulse {
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+.animate-slide-in {
+  animation: slide-in-right var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out {
+  animation: slide-out-right var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in var(--transition-normal) ease-out forwards;
+}
+
+.animate-fade-out {
+  animation: fade-out var(--transition-normal) ease-in forwards;
+}
+
+.animate-shake {
+  animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.animate-burst {
+  animation: level-up-burst 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-scan-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-scan-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+  box-shadow: 0 0 10px var(--accent-cyan);
+  animation: scan-line 3s linear infinite;
+  pointer-events: none;
+}
+
+.animate-flicker {
+  animation: neon-flicker 2.5s infinite;
+}
+
+.animate-glitch {
+  animation: glitch 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* ==========================================================================
+   3. CLICK RIPPLE & CONFETTI PIECES
+   ========================================================================== */
+
+/* Circular expansion ripple element */
+.click-ripple {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  margin-left: -20px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-cyan);
+  box-shadow: 0 0 15px var(--accent-cyan);
+  pointer-events: none;
+  animation: ripple 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  z-index: 1000;
+}
+
+/* Confetti particle elements for celebration */
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 14px;
+  top: -20px;
+  z-index: calc(var(--z-overlay) + 10);
+  pointer-events: none;
+  border-radius: 2px;
+  animation: confetti-fall 3.5s linear forwards;
+}
+
+/* Staggered confetti delay helpers */
+.confetti-piece:nth-child(2n) {
+  animation-duration: 3s;
+  animation-delay: 0.1s;
+}
+
+.confetti-piece:nth-child(3n) {
+  animation-duration: 4s;
+  animation-delay: 0.25s;
+}
+
+.confetti-piece:nth-child(4n) {
+  animation-duration: 2.8s;
+  animation-delay: 0.4s;
+}
+
+/* ==========================================================================
+   4. TRANSITION UTILITIES
+   ========================================================================== */
+
+.transition-all {
+  transition: all var(--transition-normal);
+}
+
+.transition-all-fast {
+  transition: all var(--transition-fast);
+}
+
+.transition-transform {
+  transition: transform var(--transition-normal);
+  will-change: transform;
+}
+
+.transition-transform-fast {
+  transition: transform var(--transition-fast);
+  will-change: transform;
+}
+
+.transition-opacity {
+  transition: opacity var(--transition-normal);
+  will-change: opacity;
+}
+
+.transition-colors {
+  transition: 
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}

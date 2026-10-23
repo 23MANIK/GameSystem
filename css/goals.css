@@ -1,0 +1,530 @@
+/* ==========================================================================
+   GOALS + LEVELS PANELS — calm cards, one accent per state
+   pending: neutral card, cyan progress · done: compact green rows
+   ========================================================================== */
+
+/* --- Header: product, level, overall progress --- */
+.goals-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) calc(var(--space-3) + 6px);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  border: 1px solid var(--border-glass);
+  overflow: hidden;
+}
+
+.goals-hero-icon { font-size: 28px; line-height: 1; }
+.goals-hero-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.goals-hero-text strong { font-family: var(--font-title); font-size: 15px; color: var(--text-primary); }
+.goals-hero-kicker {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.goals-hero-count { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.goals-hero-count strong { font-family: var(--font-mono); font-size: 18px; color: var(--text-primary); }
+.goals-hero-count span { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.goals-hero-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.goals-hero-track > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-cyan);
+  transition: width 0.4s ease;
+}
+
+/* --- Section headings with counters --- */
+.goals-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+  font-family: var(--font-title);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.goals-section .info-btn { margin-left: auto; }
+
+.goals-badge {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  color: var(--text-primary);
+  letter-spacing: 0;
+}
+.goals-badge.done { background: var(--accent-green-dim); color: var(--accent-green); }
+
+.goals-empty { font-size: 12px; color: var(--text-muted); padding: var(--space-2) 0; }
+
+/* --- Pending goals: neutral cards --- */
+.goals .goal {
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-glass);
+  border-left: 3px solid rgba(148, 163, 184, 0.35);
+}
+.goals .goal:first-child { border-left-color: var(--accent-cyan); }
+
+.goal-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+}
+.goals .goal-head { align-items: center; }
+.goals .goal-label { font-weight: 600; }
+.goals .goal-fill { background: var(--accent-cyan); }
+.goals .goal-value { color: var(--text-secondary); }
+
+.goals .goal-hint {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* --- Completed goals: compact rows --- */
+.goal-done-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.goal-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  background: rgba(16, 185, 129, 0.06);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.goal-done .info-btn { margin-left: auto; }
+.goal-done-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  color: #06281d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* --- Folded sections (real world, money) --- */
+.goals-fold {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  background: rgba(0, 0, 0, 0.2);
+}
+.goals-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.goals-fold > summary::-webkit-details-marker { display: none; }
+.goals-fold > summary::after { content: '▸'; margin-left: 4px; color: var(--text-muted); transition: transform 0.2s ease; }
+.goals-fold[open] > summary::after { transform: rotate(90deg); }
+.goals-fold > summary > strong { margin-left: auto; font-family: var(--font-mono); font-size: 12px; }
+.goals-fold > summary .info-btn { margin-left: auto; }
+.goals-fold > summary .info-btn + * { margin-left: 0; }
+.goals-fold .goals-economy { padding: 0 var(--space-3) var(--space-3); }
+
+.goals-world ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 var(--space-3) var(--space-3) calc(var(--space-3) + 14px);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Extra request kinds in the feature card */
+.gb-bot { color: #c084fc; }
+.gb-page { color: var(--accent-blue); }
+.gb-evt { color: #f472b6; }
+
+/* --- Levels panel: roadmap --- */
+.lv-list { list-style: none; display: flex; flex-direction: column; position: relative; }
+.lv {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+.lv:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: 0;
+  width: 2px;
+  background: rgba(148, 163, 184, 0.2);
+}
+.lv-done:not(:last-child)::before { background: var(--accent-green-border); }
+
+.lv-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+}
+.lv-done .lv-mark { background: var(--accent-green); border-color: var(--accent-green); color: #06281d; }
+.lv-current .lv-mark { background: var(--accent-cyan-dim); border-color: var(--accent-cyan); color: var(--accent-cyan); box-shadow: 0 0 0 4px rgba(6, 214, 160, 0.12); }
+.lv-locked { opacity: 0.5; }
+
+.lv-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  min-width: 0;
+}
+.lv-current .lv-body {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: rgba(6, 214, 160, 0.06);
+  border: 1px solid var(--accent-cyan-border);
+}
+.lv-body strong { font-size: 13px; color: var(--text-primary); }
+.lv-focus { font-size: 12px; color: var(--text-muted); }
+.lv-progress { font-family: var(--font-mono); font-size: 11px; color: var(--accent-cyan); }
+.lv-done .lv-progress { color: var(--accent-green); }
+.lv-unlocks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.lv-unlocks em {
+  font-style: normal;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
+
+/* --- Blueprint --- */
+.bp-path { font-size: 16px; letter-spacing: 2px; color: var(--text-secondary); }
+.bp-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.bp-row {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+}
+.bp-icon { font-size: 18px; }
+.bp-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bp-main strong { font-size: 13px; color: var(--text-primary); }
+.bp-parts { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.bp-cloud { font-size: 11px; color: var(--text-muted); }
+.bp-copy { align-self: flex-start; }
+.bp-text {
+  width: 100%;
+  min-height: 160px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+
+/* Endpoint rows: paths like /api/shorten need more room */
+.feat-ep { grid-template-columns: 42px minmax(64px, auto) 1fr auto; }
+
+/* ==========================================================================
+   COMPACT GOALS — one line per goal, tap to expand the hint
+   ========================================================================== */
+.goals { gap: var(--space-2); }
+.goals-hero { padding: 8px 12px 10px; gap: var(--space-2); }
+.goals-hero-icon { font-size: 22px; }
+.goals-hero-text strong { font-size: 14px; }
+.goals-hero-count strong { font-size: 16px; }
+
+.goals-section { margin-top: 4px; }
+.goals-tip { font-family: var(--font-body, inherit); font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--text-muted); font-weight: 400; }
+
+.goal-list { gap: 4px; }
+.goal-row {
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-glass);
+  overflow: hidden;
+}
+.goal-row[open] { border-color: var(--accent-cyan-border); background: rgba(6, 214, 160, 0.04); }
+.goal-row > summary {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 1fr auto 10px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 9px;
+  cursor: pointer;
+  list-style: none;
+}
+.goal-row > summary::-webkit-details-marker { display: none; }
+.goal-row .goal-icon { width: 22px; height: 22px; font-size: 12px; border-radius: 6px; }
+.goal-row .goal-label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.goal-short { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); white-space: nowrap; }
+.goal-chev { font-size: 10px; color: var(--text-muted); transition: transform 0.2s ease; }
+.goal-row[open] .goal-chev { transform: rotate(90deg); color: var(--accent-cyan); }
+/* Thin progress line along the bottom of the row */
+.goal-mini {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.goal-mini > span { display: block; height: 100%; background: var(--accent-cyan); transition: width 0.4s ease; }
+
+.goal-more { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px 40px; }
+.goal-now { font-size: 11px; color: var(--text-muted); }
+.goal-now strong { font-family: var(--font-mono); color: var(--text-primary); font-weight: 500; }
+.goal-more .goal-hint {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.goal-learn { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
+
+/* Completed, feature, real world, money: folded, one line each */
+.goals-fold > summary { padding: 7px 10px; font-size: 12px; }
+.goals-fold-meta { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+.goals-fold > summary .goals-fold-meta + .info-btn { margin-left: 6px; }
+.goals-fold-body { padding: 0 10px 10px; }
+.goals-done-fold > summary .goal-done-check { width: 16px; height: 16px; font-size: 10px; }
+.goal-done-list.goals-fold-body { padding-top: 0; }
+.goal-done { padding: 4px 8px; }
+.goals-world-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 26px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.goals-fold-body.feat { background: none; border: 0; padding-top: 0; display: flex; flex-direction: column; gap: 6px; }
+.goals-more { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+
+/* Finished level: one short line + the next-level button */
+.goals-paused {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.goals-paused .goals-next { margin-top: 0; }
+
+/* ==========================================================================
+   GOALS (quest-tracker layout): strip · Next up · checklist · money · about
+   ========================================================================== */
+.gp { display: flex; flex-direction: column; gap: 10px; }
+
+/* Progress strip: one segment per goal, plus the reward at stake */
+.gp-strip { display: flex; flex-direction: column; gap: 6px; }
+.gp-segs { display: flex; gap: 4px; }
+.gp-seg { flex: 1; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); transition: background 0.3s ease; }
+.gp-seg.done { background: var(--accent-green); box-shadow: 0 0 8px rgba(16, 185, 129, 0.35); }
+.gp-strip-text { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+.gp-strip-text strong { color: var(--text-primary); font-family: var(--font-mono); }
+.gp-reward { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--accent-amber); }
+
+/* Next up: the one goal in focus */
+.gp-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, rgba(6, 214, 160, 0.10), rgba(15, 23, 42, 0.6));
+  border: 1px solid var(--accent-cyan-border);
+}
+.gp-focus-kicker { font-family: var(--font-title); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-cyan); }
+.gp-focus-head { display: flex; align-items: flex-start; gap: 8px; }
+.gp-focus-head strong { flex: 1; font-size: 14px; line-height: 1.35; color: var(--text-primary); }
+.gp-focus-icon { font-size: 18px; line-height: 1.2; }
+.gp-bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.gp-bar > span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-cyan), #34d399); transition: width 0.4s ease; }
+.gp-now { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.gp-hint { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.gp-act { align-self: flex-start; padding: 7px 14px; font-size: 12px; }
+
+/* Checklist: every goal, in order; ticks stay visible */
+.gp-heading { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-family: var(--font-title); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+.gp-heading small { font-family: inherit; font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--text-muted); font-weight: 400; }
+.gp-heading .info-btn { margin-left: auto; }
+.gp-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.gp-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gp-row:hover:not(.done) { background: rgba(255, 255, 255, 0.04); }
+.gp-row.focus { background: rgba(6, 214, 160, 0.06); border-color: var(--accent-cyan-border); }
+.gp-row.done { cursor: default; }
+/* Ring that fills with the goal's progress; a green tick when done */
+.gp-check {
+  --p: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  background:
+    radial-gradient(closest-side, var(--bg-secondary, #111827) 76%, transparent 78% 100%),
+    conic-gradient(var(--accent-cyan) calc(var(--p) * 1%), rgba(255, 255, 255, 0.1) 0);
+}
+.gp-row.done .gp-check { background: var(--accent-green); color: #06281d; font-weight: 800; font-size: 13px; }
+.gp-label { font-size: 12px; line-height: 1.35; color: var(--text-primary); }
+.gp-row.done .gp-label { color: var(--text-muted); text-decoration: line-through; text-decoration-color: rgba(148, 163, 184, 0.4); }
+.gp-val { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+
+/* Money: three numbers in a row, the rest folded */
+.gp-money { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.gp-money > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-glass);
+}
+.gp-money span { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--text-muted); }
+.gp-money strong { font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); }
+
+/* Folds */
+.gp-fold { border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(0, 0, 0, 0.2); }
+.gp-fold > summary { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; list-style: none; font-size: 12px; color: var(--text-primary); }
+.gp-fold > summary::-webkit-details-marker { display: none; }
+.gp-chev { margin-left: auto; font-size: 10px; color: var(--text-muted); transition: transform 0.2s ease; }
+.gp-fold[open] > summary .gp-chev { transform: rotate(90deg); }
+.gp-fold-meta { font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gp-fold-small { border: 0; background: none; }
+.gp-fold-small > summary { padding: 2px 2px; font-size: 11px; color: var(--text-muted); }
+.gp-fold-body { padding: 0 10px 10px; }
+.gp-fold-small .gp-fold-body { padding: 6px 0 0; }
+.gp-about { display: flex; flex-direction: column; gap: 8px; }
+.gp-story { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.gp-sub { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-primary); margin-top: 4px; }
+.gp-notes { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+/* Level complete */
+.gp-complete {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, rgba(16, 185, 129, 0.16), rgba(15, 23, 42, 0.6));
+  border: 1px solid var(--accent-green-border);
+}
+.gp-complete-head { display: flex; align-items: center; gap: 10px; }
+.gp-complete-head > div { display: flex; flex-direction: column; }
+.gp-complete-head strong { font-family: var(--font-title); font-size: 15px; color: var(--text-primary); }
+.gp-trophy { font-size: 26px; }
+.gp-done-funding { font-family: var(--font-mono); font-size: 11px; color: var(--accent-amber); }
+.gp-complete p { font-size: 12px; color: var(--text-secondary); }
+.gp-next { align-self: stretch; }
+
+/* Money panel (click Coins in the top bar) */
+.hud-coins-btn { cursor: pointer; color: inherit; font: inherit; text-align: left; }
+.hud-coins-btn:hover { border-color: var(--accent-amber-border, rgba(251, 191, 36, 0.4)); background: rgba(251, 191, 36, 0.06); }
+.mp-bills { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.mp-bill { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr auto; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+.mp-bill > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-bill strong { font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); }
+.mp-bill-bar { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.mp-bill-bar > span { display: block; height: 100%; background: var(--accent-amber); opacity: 0.7; }
+
+/* Levels tab: the current level's story, feature and real-world notes */
+.lv-about {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, rgba(224, 64, 251, 0.10), rgba(15, 23, 42, 0.6));
+  border: 1px solid var(--accent-magenta-border);
+}
+.lv-about .gp-focus-kicker { color: var(--accent-magenta); }
+.lv-about-title { font-family: var(--font-title); font-size: 15px; color: var(--text-primary); }
+
+/* Money popover: essentials first, details folded */
+.mp-status { font-size: 13px; color: var(--text-secondary); }
+.mp-status strong { font-family: var(--font-mono); }
+.mp-tip { font-size: 12px; color: var(--text-muted); margin-top: -4px; }
+.mp-details { margin-top: 2px; }
+.mp-details-body { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }

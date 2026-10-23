@@ -1,0 +1,6 @@
+# Only the game itself goes online (index.html, css/, js/)
+.claude
+docs
+tools
+ROADMAP.md
+*.md

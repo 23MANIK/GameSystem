@@ -1,0 +1,311 @@
+/* ==========================================================================
+   SCALE ARCHITECT — GAME GRID & WORLD LAYOUT
+   Isometric System Grid, Canvas Layers & World Viewport
+   ========================================================================== */
+
+/* --- Main Game Container --- */
+.game-container {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: 60px 1fr 64px;
+  grid-template-columns: 1fr;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(17, 24, 39, 0.8) 0%, rgba(10, 14, 23, 1) 100%);
+}
+
+/* --- Game World (Middle Play Area) --- */
+.game-world {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  background: 
+    radial-gradient(ellipse at 50% 40%, rgba(6, 214, 160, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(224, 64, 251, 0.03) 0%, transparent 50%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+
+.game-world:active {
+  cursor: grabbing;
+}
+
+/* --- World Viewport / Transform Container (for pan & zoom) --- */
+.world-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+/* --- HTML5 Canvas Layer (Particle effects, data flow, radar sweeps) --- */
+.grid-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: var(--z-canvas);
+}
+
+/* --- Grid Overlay Layer (Placement Grid & Cells) --- */
+.grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  z-index: var(--z-grid);
+}
+
+/* --- Isometric Grid Board Container --- */
+.isometric-board {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* --- Isometric Grid Cell Styles --- */
+.grid-cell {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(17, 24, 39, 0.4);
+  transition: 
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Cell hover highlight */
+.grid-cell:hover {
+  background: rgba(6, 214, 160, 0.08);
+  border-color: rgba(6, 214, 160, 0.35);
+  box-shadow: inset 0 0 12px rgba(6, 214, 160, 0.2);
+}
+
+/* Cell states during placement / selection */
+.grid-cell.valid-placement {
+  background: rgba(6, 214, 160, 0.18) !important;
+  border: 2px solid var(--accent-cyan) !important;
+  box-shadow: 
+    0 0 15px rgba(6, 214, 160, 0.5),
+    inset 0 0 15px rgba(6, 214, 160, 0.3) !important;
+  animation: cellPulseGreen 1.5s ease-in-out infinite;
+  z-index: 2;
+}
+
+.grid-cell.invalid-placement {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border: 2px solid var(--accent-red) !important;
+  box-shadow: 
+    0 0 15px rgba(239, 68, 68, 0.5),
+    inset 0 0 15px rgba(239, 68, 68, 0.3) !important;
+  animation: cellPulseRed 1.5s ease-in-out infinite;
+  cursor: not-allowed;
+  z-index: 2;
+}
+
+.grid-cell.occupied {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.grid-cell.occupied:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(6, 214, 160, 0.4);
+}
+
+.grid-cell.selected-target {
+  border: 2px dashed var(--accent-cyan);
+  box-shadow: 0 0 20px rgba(6, 214, 160, 0.4);
+}
+
+/* Coordinate indicator inside cell */
+.grid-cell .cell-coord {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: rgba(148, 163, 184, 0.25);
+  pointer-events: none;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+}
+
+/* --- Connection SVG Layer --- */
+.connection-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: var(--z-connections);
+  overflow: visible;
+}
+
+/* --- Component Layer (Placed buildings/nodes) --- */
+.component-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: var(--z-components);
+}
+
+.component-layer > * {
+  pointer-events: auto;
+}
+
+/* --- Placement Ghost Preview --- */
+.placement-ghost {
+  position: absolute;
+  pointer-events: none;
+  z-index: calc(var(--z-components) + 5);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 12px var(--accent-cyan));
+  transition: transform var(--transition-fast);
+}
+
+.placement-ghost.invalid {
+  filter: drop-shadow(0 0 12px var(--accent-red)) hue-rotate(180deg);
+}
+
+/* --- Side Panel (Slide out drawer) --- */
+.side-panel {
+  position: absolute;
+  top: 60px;
+  right: 0;
+  bottom: 64px;
+  width: 380px;
+  max-width: calc(100vw - 20px);
+  z-index: var(--z-panel);
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid var(--border-glass-bright);
+  box-shadow: 
+    -10px 0 40px rgba(0, 0, 0, 0.65),
+    inset 1px 0 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-normal);
+  will-change: transform;
+}
+
+.side-panel.open {
+  transform: translateX(0);
+}
+
+.side-panel.closed {
+  transform: translateX(100%);
+}
+
+/* Cyber edge glow line for side panel */
+.side-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--accent-cyan) 30%,
+    var(--accent-magenta) 70%,
+    transparent 100%
+  );
+  opacity: 0.8;
+  box-shadow: 0 0 8px var(--accent-cyan);
+}
+
+/* Animations for grid cells */
+@keyframes cellPulseGreen {
+  0%, 100% {
+    border-color: rgba(6, 214, 160, 0.6);
+    box-shadow: 0 0 10px rgba(6, 214, 160, 0.3), inset 0 0 10px rgba(6, 214, 160, 0.2);
+  }
+  50% {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 20px rgba(6, 214, 160, 0.7), inset 0 0 20px rgba(6, 214, 160, 0.4);
+  }
+}
+
+@keyframes cellPulseRed {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3), inset 0 0 10px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.7), inset 0 0 20px rgba(239, 68, 68, 0.4);
+  }
+}
+
+/* --- Camera Controls Overlay (Zoom & Center HUD buttons) --- */
+.camera-controls {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: var(--z-ui);
+}
+
+.camera-btn {
+  width: 36px;
+  height: 36px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-glass-bright);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: 
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.camera-btn:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  background: var(--bg-tertiary);
+  transform: scale(1.05);
+}
+
+.camera-btn:active {
+  transform: scale(0.95);
+}

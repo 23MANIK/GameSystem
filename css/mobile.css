@@ -1,0 +1,154 @@
+/* ==========================================================================
+   PHONES (under 600px wide) — nothing here applies to laptops or tablets.
+   Patterns people already know from their apps:
+   - panels open as bottom sheets (grab handle, dimmed background, swipe down to close)
+   - primary actions within thumb reach, tab bar at the bottom
+   - touch targets at least 44px
+   ========================================================================== */
+
+/* Desktop never shows the sheet extras */
+.sheet-handle, .sheet-scrim { display: none; }
+
+@media (max-width: 600px) {
+  :root { --safe-bottom: env(safe-area-inset-bottom, 0px); }
+
+  /* --- Top bar: one compact row --- */
+  .hud { height: 56px; padding: 0 8px; gap: 6px; }
+  .hud-left { gap: 6px; flex: 0 1 auto; }
+  .hud-right { flex: 0 0 auto; }
+  .hud-center { flex: 0 0 auto; margin-left: auto; }
+  .hud-home { width: 44px; height: 44px; font-size: 18px; }
+  .hud-stat { padding: 4px 8px; min-height: 44px; }
+  .hud-left .hud-stat-icon { display: none; }
+  .hud-stat .label { font-size: 8px; }
+  .hud-stat .value { font-size: 13px; }
+  .hud-stat.users .info-btn { display: none; }
+  .hud-stat.reputation, .hud-stat.latency, .hud-busiest { display: none; }
+  .hud-levelcard { height: 44px; padding: 0 6px; }
+  .hud-levelcard-body { display: none; }
+  .hud-lv { height: 34px; font-size: 13px; padding: 0 12px; }
+  .hud-spike-wrap { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 120; }
+
+  /* --- Bottom tab bar: room for the home indicator, big targets --- */
+  .nav-bar { height: calc(60px + var(--safe-bottom)); padding: 0 8px var(--safe-bottom); }
+  .nav-btn { min-width: 72px; min-height: 48px; }
+
+  /* --- Guide: a compact card docked above the tab bar --- */
+  .guide-bubble {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    bottom: calc(68px + var(--safe-bottom));
+    padding: 10px 12px;
+    gap: 10px;
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+  .guide-avatar { display: none; }
+  .guide-text { font-size: 13px; line-height: 1.45; }
+  .guide-meta { font-size: 10px; }
+  .guide-actions { margin-top: 6px; }
+  .guide-btn { min-height: 40px; }
+  body.sheet-open .guide-bubble { display: none !important; }
+
+  /* --- Toasts: full width under the top bar, out of the thumb zone --- */
+  .notification-container {
+    top: 62px;
+    bottom: auto;
+    left: 8px;
+    right: 8px;
+  }
+  .notification { min-width: 0; max-width: none; width: 100%; font-size: 12px; }
+
+  /* --- Goals, Money, Alerts: bottom sheets --- */
+  .side-panel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 84vh;
+    height: 84vh;
+    border-left: 0;
+    border-top: 1px solid var(--border-glass-bright);
+    border-radius: 20px 20px 0 0;
+    padding-bottom: var(--safe-bottom);
+    z-index: calc(var(--z-panel) + 20);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.6);
+  }
+  .side-panel::before { display: none; }
+  .side-panel.closed { transform: translateY(105%); }
+  .side-panel.open { transform: translateY(0); }
+  .side-panel.dragging { transition: none; }
+  .panel-header { position: relative; padding-top: 18px; touch-action: none; }
+  .sheet-handle {
+    display: block;
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    width: 40px;
+    height: 5px;
+    margin-left: -20px;
+    border-radius: 99px;
+    background: rgba(148, 163, 184, 0.45);
+  }
+  .panel-close-btn { min-width: 44px; min-height: 44px; }
+  .sheet-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-panel) + 10);
+    background: rgba(2, 6, 14, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  body.sheet-open .sheet-scrim { opacity: 1; pointer-events: auto; }
+
+  /* --- Server Builder: a tall sheet, Buy button at the bottom --- */
+  .modal-backdrop { align-items: flex-end; }
+  .modal-content.server-builder-modal,
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 94vh;
+    border-radius: 20px 20px 0 0;
+    padding-bottom: var(--safe-bottom);
+  }
+  .sb-tabs { overflow-x: auto; scrollbar-width: none; }
+  .sb-tab { min-height: 40px; white-space: nowrap; }
+  .sb-options { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .sb-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .modal-actions .btn { min-height: 44px; flex: 1; }
+
+  /* --- Lv popover: full width under the top bar --- */
+  .level-pop { border-radius: 18px; }
+  .feat-ep { grid-template-columns: 40px 1fr auto; row-gap: 2px; }
+  .feat-ep .feat-does { grid-column: 2 / 4; grid-row: 2; color: var(--text-muted); }
+
+  /* --- Diagram on phones --- */
+  .sd-legend { display: flex; top: 6px; left: 8px; right: 8px; font-size: 10px; gap: 2px 8px; }
+  .sd-info { width: 22px; height: 22px; font-size: 12px; }
+  .sd-node .sd-node-head { padding-right: 22px; }
+  .sd-details { left: 8px !important; right: 8px; width: auto !important; }
+
+  /* --- Level intro card, level complete --- */
+  .li-card { padding: 18px 16px 16px; border-radius: 18px; }
+  .li-title { font-size: 19px; }
+  .li-start { min-height: 48px; }
+  .level-up-content { padding: 16px; }
+  .level-up-continue { min-height: 48px; }
+
+  /* --- Product picker --- */
+  .pp-inner { padding: 16px 12px calc(16px + var(--safe-bottom)); }
+  .pp-grid { grid-template-columns: 1fr; }
+  .pp-play { min-height: 48px; }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+  .hud-stat .label { display: none; }
+  .nav-btn { min-width: 60px; }
+}
