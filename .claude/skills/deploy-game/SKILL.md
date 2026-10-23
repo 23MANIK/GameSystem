@@ -8,6 +8,13 @@ description: Deploy Scale Architect to Vercel production (scale-architect.vercel
 Production: https://scale-architect.vercel.app (Vercel project `scale-architect`, team `23maniks-projects`).
 The deployable copy lives OUTSIDE the home-folder git repo, at `/Users/Shared/scale-architect`, which is already linked to that project.
 
+## V1 is frozen on production
+
+Production runs **V1** (git tag `v1.0.0`, branch `main` in this folder's own repo). V2 work happens on the `v2` branch.
+- On `v2`, or any branch other than `main`: run the test gate and deploy a **preview only** (step 3). Skip step 4, give the user the preview URL, and say production is still V1.
+- Promote V2 to production only when the user explicitly says to release V2 (for example "release V2" or "put V2 on prod"). Then tag the release (`v2.0.0`) and merge it into `main`.
+- A fix for V1 itself: make it on `main` and deploy it to production as usual.
+
 **Never deploy to production without a PASS from step 1 for this exact code.** If the user asks to skip the tests, explain the risk and ask them to confirm in their own words first.
 
 ## 1. Test gate (parallel subagents: Opus 5.5, low effort)
