@@ -8,6 +8,7 @@
 import { GUESTBOOK_LEVELS } from './levels.js';
 import { URL_SHORTENER_LEVELS } from '../products/urlShortener/levels.js';
 import { CLOUD_DRIVE_LEVELS } from '../products/cloudDrive/levels.js';
+import { NEWS_FEED_LEVELS } from '../products/newsFeed/levels.js';
 
 const levelList = levels => levels.map(l => ({ level: l.level, name: l.name, focus: l.subtitle, playable: !l.comingSoon }));
 
@@ -38,14 +39,10 @@ export const PRODUCTS = [
     name: 'News Feed',
     likeWhat: 'like Twitter / Instagram',
     icon: '📰',
-    tagline: 'Users post, follow each other and scroll a personal feed.',
-    concepts: ['Fan-out on write vs read', 'Feed cache', 'Media storage'],
-    levels: [
-      { level: 1, name: 'Hello, Posts', focus: 'Posts and follows on one server' },
-      { level: 2, name: 'Photos', focus: 'Object storage and a CDN' },
-      { level: 3, name: 'The Feed', focus: 'Fan-out and a feed cache' },
-      { level: 4, name: 'Celebrity Problem', focus: 'Hybrid fan-out' }
-    ]
+    tagline: 'Users post, follow each other and scroll a personal feed. Pagination, rate limits, feed caches, fan-out on write through a queue, the celebrity problem, sharding and photos at the edge.',
+    concepts: ['Cursor pagination', 'Rate limiting', 'Feed cache', 'Fan-out on write', 'Hybrid fan-out', 'Sharding / Snowflake IDs', 'CDN'],
+    playable: true,
+    levels: levelList(NEWS_FEED_LEVELS)
   },
   {
     id: 'cloud_drive',

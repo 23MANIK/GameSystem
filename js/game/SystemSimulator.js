@@ -28,6 +28,9 @@ export const ARCHIVE_KEEP = 2000; // entries kept in the database once archiving
 const BROWSER_CACHED = 0.4;  // with 301s, share of clicks the browser answers itself
 const CLICK_BATCH = 50;      // click events a queue consumer folds into one database write
 const COLLISION_SHARE = 0.3; // per-shard counters: share of new codes that clash
+const FANOUT_WAIT_MS = 0.5;  // inline fan-out: extra ms a post waits per follower feed written
+const FANOUT_WAIT_CAP = 150; // …capped (the request times out / gives up)
+const MERGE_READS = 10;      // hybrid fan-out: celebrity timelines pulled per feed read, per unit of celebrityShare
 
 export function rowsReturned(entries, fixes = {}) {
   return fixes.pagination ? Math.min(entries, PAGE_SIZE) : entries;
@@ -67,6 +70,11 @@ function trafficParams(params = {}) {
     publicShare: 0,       // downloads of public links (cacheable at the edge)
     unverifiedShare: 0,   // uploads marked done by the client but missing a chunk (unless verified)
     browsePerUser: 0,     // folder browsing, renames, search: metadata reads a cache can't absorb
+    // ─── Fan-out (news feeds) ───
+    shardIdClash: false,  // true: shards that count their own IDs hand out duplicates (needs idgen)
+    fanoutPerWrite: 0,    // feed writes per real post (followers' feeds to update)
+    celebrityShare: 0,    // share of posts from huge accounts
+    celebrityMult: 1000,  // their fan-out is this many times bigger
     ...params
   };
 }
@@ -101,7 +109,7 @@ function trafficFlow(m, entries, fixes, p, shards) {
   // create (on every shard once the data is split). Codes made from unique IDs
   // (Base62) skip it, but per-shard counters clash without a global ID generator.
   const codeChecks = lookup && !fixes.base62 ? wAll * (m.idgen ? 1 : shards) : 0;
-  const collisionShare = lookup && fixes.base62 && shards > 1 && !m.idgen ? COLLISION_SHARE : 0;
+  const collisionShare = (p.shardIdClash || (lookup && fixes.base62)) && shards > 1 && !m.idgen ? COLLISION_SHARE : 0;
   const idRequests = m.idgen ? wAll * (fixes.idRanges ? 0.01 : 1) : 0;
 
   // Click analytics: every real redirect is an event to count
@@ -110,7 +118,18 @@ function trafficFlow(m, entries, fixes, p, shards) {
   const syncClickWrites = clicks && !m.queue ? clicksOrigin : 0;  // UPDATE clicks = clicks + 1, inline
   const queuedClicks = clicks && m.queue ? clicks : 0;             // edge clicks are logged to the queue too
   const batchWrites = queuedClicks / CLICK_BATCH;
-  const dbWrites = wAll + syncClickWrites + batchWrites;
+  // Fan-out on write: each real post is copied into every follower's feed
+  // (into the cache if there is one, else the database). Without a queue the
+  // app does it inside the request; with one, workers do it in the background.
+  // Hybrid fan-out skips celebrity posts and merges them in at read time.
+  const fanout = p.fanoutPerWrite || 0;
+  const celebTerm = fixes.hybridFanout ? 0 : p.celebrityShare * (p.celebrityMult - 1);
+  const fanoutPerPost = fanout ? fanout * (1 + celebTerm) : 0;
+  const fanoutWrites = w * fanoutPerPost;
+  const fanoutInline = m.queue ? 0 : fanoutWrites;
+  const fanoutQueued = m.queue ? fanoutWrites : 0;
+  const mergeReads = fanout && fixes.hybridFanout ? readsOrigin * p.celebrityShare * MERGE_READS : 0;
+  const dbWrites = wAll + syncClickWrites + batchWrites + (m.cache ? 0 : fanoutWrites);
 
   // ─── Files: bytes, uploads, sync, sharing ───
   const file = p.readKind === 'file';
@@ -141,7 +160,8 @@ function trafficFlow(m, entries, fixes, p, shards) {
       botsIn, botsPassed, botReads, edgeHit: fileEdge, cacheHit,
       readsOrigin: fileReadsOrigin, pagesOrigin: 0, dbReads: fileReadsOrigin + polls + listsDb * 0,
       codeChecks: 0, collisionShare: 0, idRequests: 0,
-      clicks: 0, clicksOrigin: 0, syncClickWrites: 0, queuedClicks: 0, dbWrites: wAll * (fixes.versions ? 1.3 : 1),
+      clicks: 0, clicksOrigin: 0, syncClickWrites: 0, queuedClicks: 0,
+      fanoutPerPost: 0, fanoutWrites: 0, fanoutInline: 0, fanoutQueued: 0, mergeReads: 0, dbWrites: wAll * (fixes.versions ? 1.3 : 1),
       upKB, bytesViaApp, tooBig, polls, pushes, lists, listsDb, listCost, lostEdits, dedupCut, broken, browse,
       apiOrigin: fileReadsOrigin + wAll + polls + lists,
       apiIn: fileReadsOrigin + wAll + polls + lists
@@ -151,9 +171,10 @@ function trafficFlow(m, entries, fixes, p, shards) {
   return {
     r, w, wAll, R, respKB, splitUi, lookup,
     botsIn, botsPassed, botReads, edgeHit, cacheHit,
-    readsOrigin, pagesOrigin, dbReads,
+    readsOrigin, pagesOrigin, dbReads: dbReads + mergeReads * (1 - cacheHit),
     codeChecks, collisionShare, idRequests,
     clicks, clicksOrigin, syncClickWrites, queuedClicks, dbWrites,
+    fanoutPerPost, fanoutWrites, fanoutInline, fanoutQueued, mergeReads,
     apiOrigin: readsOrigin + wAll,
     apiIn: (r + (writeBots ? 0 : botsIn)) * (1 - edgeHit) + w + (writeBots ? botsIn : 0)
   };
@@ -220,9 +241,9 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
   } else if (!m.db) {
     // One machine does everything
     loads.app = {
-      cpu: { base: 0, perUser: f.readsOrigin * (1 + scanCpu) + f.codeChecks * (1 + scanCpu) + f.wAll + f.syncClickWrites * 0.5 + f.pagesOrigin },
+      cpu: { base: 0, perUser: f.readsOrigin * (1 + scanCpu) + f.codeChecks * (1 + scanCpu) + f.wAll + f.syncClickWrites * 0.5 + f.pagesOrigin + f.fanoutWrites * 0.1 },
       ram: { base: 400, perUser: 15 },
-      storage: { base: 0, perUser: (f.readsOrigin + f.codeChecks) * diskPerRead + (f.wAll + f.syncClickWrites) * diskPerWrite + f.pagesOrigin * 0.05 },
+      storage: { base: 0, perUser: (f.readsOrigin + f.codeChecks) * diskPerRead + (f.wAll + f.syncClickWrites + f.fanoutWrites * 0.3) * diskPerWrite + f.pagesOrigin * 0.05 },
       network: { base: 0, perUser: f.readsOrigin * f.respKB + f.wAll * writeKB + f.pagesOrigin * p.pageKB }
     };
   } else {
@@ -230,10 +251,10 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
     // Load on EACH app server (the load balancer splits it N ways)
     loads.app = {
       // A JSON API call (Level 3+) is lighter than building a whole page
-      cpu: { base: 0, perUser: (f.apiOrigin * (p.appCallCost ?? (f.splitUi ? 0.3 : 0.4)) + appPages + clickCpu) / N },
+      cpu: { base: 0, perUser: (f.apiOrigin * (p.appCallCost ?? (f.splitUi ? 0.3 : 0.4)) + appPages + clickCpu + f.fanoutInline * 0.1) / N },
       ram: { base: 300, perUser: 5 / N },
       storage: { base: 0, perUser: (f.apiOrigin * 0.02 + appPages * 0.05) / N },
-      network: { base: 0, perUser: (f.readsOrigin * f.respKB + f.wAll + appPages * p.pageKB) / N }
+      network: { base: 0, perUser: (f.readsOrigin * f.respKB + f.wAll + appPages * p.pageKB + f.fanoutInline * 0.1) / N }
     };
     // Load on EACH database shard (rows and requests are split S ways)
     const dbLookups = f.dbReads + f.codeChecks;
@@ -277,10 +298,11 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
       storage: { base: 0, perUser: 0 },
       network: { base: 0, perUser: f.lists * 3 }
     } : {
-      cpu: { base: 0, perUser: f.readsOrigin * 0.03 + f.w * 0.02 }, // writes invalidate cached pages
+      // writes invalidate cached pages; fan-out pushes post IDs into feed lists
+      cpu: { base: 0, perUser: f.readsOrigin * 0.03 + f.w * 0.02 + f.fanoutWrites * 0.01 + f.mergeReads * 0.01 },
       ram: { base: 500, perUser: 0.2 }, // the hot entries, plus a little per user
       storage: { base: 0, perUser: 0 },
-      network: { base: 0, perUser: f.readsOrigin * f.cacheHit * f.respKB }
+      network: { base: 0, perUser: f.readsOrigin * f.cacheHit * f.respKB + f.fanoutWrites * 0.1 + f.mergeReads * 0.5 }
     };
   }
   if (m.cdn) {
@@ -305,10 +327,11 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
   if (m.queue) {
     // Click events are appended to a log and read by a consumer in batches
     loads.queue = {
-      cpu: { base: 0, perUser: f.queuedClicks * 0.012 },
-      ram: { base: 400, perUser: f.queuedClicks * 1 },
-      storage: { base: 0, perUser: f.queuedClicks * 0.02 }, // sequential appends are cheap
-      network: { base: 0, perUser: f.queuedClicks * 0.6 }
+      // Fan-out jobs too: workers copy each post into its followers' feeds
+      cpu: { base: 0, perUser: f.queuedClicks * 0.012 + f.fanoutQueued * 0.004 },
+      ram: { base: 400, perUser: f.queuedClicks * 1 + f.fanoutQueued * 0.2 },
+      storage: { base: 0, perUser: f.queuedClicks * 0.02 + f.fanoutQueued * 0.005 }, // sequential appends are cheap
+      network: { base: 0, perUser: f.queuedClicks * 0.6 + f.fanoutQueued * 0.1 }
     };
   }
   return loads;
@@ -378,8 +401,11 @@ export function simulateSystem(state) {
   const distance = params.globalShare * params.distanceMs * (1 - f.edgeHit);
   // Writing a click inline makes every redirect wait for a database write
   const clickWaitMs = f.syncClickWrites > 0 ? 4 : 0;
+  // Inline fan-out: a post waits until every follower's feed is written;
+  // hybrid fan-out: each feed read merges in celebrity posts
+  const fanoutMs = (f.fanoutInline > 0 ? Math.min(FANOUT_WAIT_CAP, f.fanoutPerPost * FANOUT_WAIT_MS) : 0) + (f.mergeReads > 0 ? 3 : 0);
   const fileMs = f.file ? (f.bytesViaApp && m.blob ? 12 : 0) + (fixes.coldTier ? 5 : 0) + (fixes.compress ? 6 : 0) : 0;
-  const latency = Math.round(20 + hops + queryMs * dbShare + clickWaitMs + fileMs + Math.max(0, peak - 0.7) * 400 + distance);
+  const latency = Math.round(20 + hops + queryMs * dbShare + clickWaitMs + fileMs + fanoutMs + Math.max(0, peak - 0.7) * 400 + distance);
 
   // Errors: overloaded parts drop requests (out of RAM is worst); a full disk
   // fails every write; clashing short codes break new links; with every app
@@ -443,6 +469,11 @@ export function simulateSystem(state) {
     browsePerSec: users * (f.browse || 0),
     uploadMBPerSec: users * (f.file ? f.wAll * f.upKB / 1000 : 0),
     bytesViaApp: Boolean(f.bytesViaApp),
+    // Fan-out: feed writes per second, and how fast the queue's backlog grows
+    // (+) or drains (−) when its CPU can't keep up
+    fanoutPerSec: users * (f.fanoutWrites || 0),
+    fanoutBacklogRate: fanoutBacklogRate(f, servers, users),
+    fanoutMs,
     diskFull,
     // Requests per second along each part of the path (for the animated diagram)
     flows: {
@@ -468,9 +499,19 @@ export function simulateSystem(state) {
       blobIn: users * (f.file ? f.readsOrigin + f.wAll : 0),
       polls: users * (f.polls || 0),
       pushes: users * (f.pushes || 0),
-      devices: users * (params.devicesPerUser || 0)
+      devices: users * (params.devicesPerUser || 0),
+      fanout: users * (f.fanoutWrites || 0),   // feed writes (inline or via the queue)
+      fanoutQueued: users * (f.fanoutQueued || 0)
     }
   };
+}
+
+/** Queued fan-out jobs per second the workers fall behind (+) or could catch up (−). */
+function fanoutBacklogRate(f, servers, users) {
+  const queued = users * (f.fanoutQueued || 0);
+  const u = servers.queue?.usage?.cpu || 0;
+  if (!queued || !u) return 0;
+  return u > 1 ? queued * (1 - 1 / u) : -queued * (1 / u - 1);
 }
 
 /** Users one option of one part could handle (for the builder cards). */

@@ -31,7 +31,7 @@ const { ROLES, rolesForLevel } = await import(root + 'data/roles.js');
 const { CODE_FIXES, fixesForLevel } = await import(root + 'data/codeFixes.js');
 
 const PARAM_KEYS = ['readsPerUser', 'writesPerUser', 'pageViewsPerUser', 'pageKB', 'botShare', 'botKind', 'spamPerUser',
-  'globalShare', 'distanceMs', 'dbReadCost', 'readKind', 'cacheHitRate', 'edgeHitRate', 'clickTracking', 'keepRecords', 'appCallCost',
+  'globalShare', 'distanceMs', 'dbReadCost', 'readKind', 'cacheHitRate', 'edgeHitRate', 'clickTracking', 'keepRecords', 'appCallCost', 'shardIdClash', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult',
   'readKB', 'writeKB', 'recordSpace', 'blobSpaceMult', 'bigFileShare', 'dedupShare', 'updateShare', 'devicesPerUser',
   'pollPerDevice', 'listReadsPerUser', 'conflictShare', 'publicShare', 'unverifiedShare', 'browsePerUser'];
 

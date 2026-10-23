@@ -137,6 +137,17 @@ for (const id of Object.keys(registry.PACKS)) {
   });
 }
 
+// ─── 5b. Headless play-test: a bot finishes every level ───
+for (const id of Object.keys(registry.PACKS)) {
+  await test(`${id}: headless play-test finishes every level`, () => {
+    try {
+      execFileSync(process.execPath, [path.join(ROOT, 'tools/playtest-headless.mjs'), id], { encoding: 'utf8' });
+    } catch (e) {
+      throw new Error((e.stdout || e.message).trim().split('\n').filter(l => /STUCK|pending|FAIL/.test(l)).join(' | '));
+    }
+  });
+}
+
 // ─── 6. Edge rate limiter ───
 const mw = await imp('deploy/middleware.js');
 const req = (p, ip = '1.2.3.4') => new Request(`https://example.com${p}`, { headers: { 'x-real-ip': ip } });

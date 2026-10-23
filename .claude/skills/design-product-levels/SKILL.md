@@ -80,6 +80,8 @@ Run `node tools/balance-levels.mjs <product-id>` and iterate until:
 
 ## 5. Play-test in the browser
 
+First run the same bot headless: `node tools/playtest-headless.mjs <product-id>` (and `node tools/check-pack.mjs <product-id>` for the full gate). For a fully automatic run, see the `generate-product-levels` skill.
+
 Start the `game` preview server and pick the product. Then:
 1. Play Level 1 by hand: the tutorial, building the server, placing it, opening to the public.
 2. Use `reference/playtest-bot.js` to fast-forward every level. Each level should finish in roughly 4–12 simulated minutes.

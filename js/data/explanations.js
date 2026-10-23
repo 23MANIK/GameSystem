@@ -304,6 +304,18 @@ export const EXPLANATIONS = {
       <p>The producer drops an event in and moves on, so users never wait. A worker reads events at its own pace, in batches, and retries failures.</p>
       <p class="info-eg">Use it for anything that doesn't have to happen before you answer the user: analytics, emails, notifications, video processing.</p>`
   },
+  fanout: {
+    title: '📣 Fan-out on write',
+    body: `<p>Instead of building a feed when someone opens it (reading every followee's posts and merging them), copy each new post's ID into every follower's feed list when it is posted. Reading a feed is then one lookup.</p>
+      <p>The cost moves to writes: a post by someone with 30 followers is 30 feed writes. Done inside the request, posting gets slow; through a <strong>queue</strong>, workers do it in the background and the post returns at once.</p>
+      <p class="info-eg">Twitter's home timeline worked this way: a tweet was fanned out to followers' Redis timelines by background workers.</p>`
+  },
+  hybridFanout: {
+    title: '🌟 Hybrid fan-out',
+    body: `<p>An account with 50 million followers would need 50 million feed writes per post: the queue falls hours behind. So big accounts are <strong>not</strong> fanned out.</p>
+      <p>Normal posts are still pushed into feeds on write; celebrity posts are pulled when a feed is read and merged in. Reads get a little more work, writes get vastly less.</p>
+      <p class="info-eg">Twitter and Instagram both use this mix of push (most users) and pull (celebrities).</p>`
+  },
   sharding: {
     title: '🧱 Sharding',
     body: `<p>Splitting one big table across several database machines. Each <strong>shard</strong> holds a slice of the rows, chosen by a <em>shard key</em> (e.g. a hash of the short code).</p>

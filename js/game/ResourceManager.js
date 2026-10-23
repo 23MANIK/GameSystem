@@ -84,6 +84,14 @@ export default class ResourceManager {
         if (st?.uploadMBPerSec != null && st.writesPerSec && !st.brokenFilesPerSec && !st.uploadFailShare) {
           live.verifiedFiles = (live.verifiedFiles || 0) + st.recordsPerSec * (1 - st.errorRate) * deltaSeconds;
         }
+        // News feed: feed writes done, the queue's fan-out backlog, and how long
+        // it has stayed empty while posts fan out
+        if (st?.fanoutPerSec) {
+          const behind = Math.max(0, st.fanoutBacklogRate || 0);
+          live.feedWrites = (live.feedWrites || 0) + (st.fanoutPerSec - behind) * (1 - st.errorRate) * deltaSeconds;
+          live.fanoutBacklog = Math.max(0, (live.fanoutBacklog || 0) + (st.fanoutBacklogRate || 0) * deltaSeconds);
+          live.fanoutClearSec = live.fanoutBacklog < 1 ? (live.fanoutClearSec || 0) + deltaSeconds : 0;
+        }
         if (st && st.dbCount >= 2 && !st.collisionShare && !st.diskFull) {
           live.cleanLinks = (live.cleanLinks || 0) + st.recordsPerSec * (1 - st.errorRate) * deltaSeconds;
         }

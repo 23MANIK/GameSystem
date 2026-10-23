@@ -31,11 +31,13 @@ import { SERVER_PARTS } from '../data/serverParts.js';
 import guestbook from './guestbook/index.js';
 import urlShortener from './urlShortener/index.js';
 import cloudDrive from './cloudDrive/index.js';
+import newsFeed from './newsFeed/index.js';
 
 export const PACKS = {
   guestbook,
   url_shortener: urlShortener,
-  cloud_drive: cloudDrive
+  cloud_drive: cloudDrive,
+  news_feed: newsFeed
 };
 
 // Original shared wording, so switching products can restore it

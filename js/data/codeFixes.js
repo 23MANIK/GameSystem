@@ -157,6 +157,17 @@ export const CODE_FIXES = {
     effect: 'Blob storage costs half as much to run. Opening an old file is a little slower.',
     info: 'coldTier'
   },
+  // ─── News feed ───
+  hybridFanout: {
+    id: 'hybridFanout',
+    name: 'Hybrid fan-out',
+    icon: '🌟',
+    cost: 1500,
+    unlockLevel: Infinity,
+    short: 'Don\'t copy posts from huge accounts into every follower\'s feed. Fetch them when a feed is read and merge them in.',
+    effect: 'Celebrity posts stop costing ~1,000× the feed writes: the fan-out queue keeps up. Each feed read does a little more work (a few ms).',
+    info: 'hybridFanout'
+  },
   redirect301: {
     id: 'redirect301',
     name: 'Permanent redirects (301)',

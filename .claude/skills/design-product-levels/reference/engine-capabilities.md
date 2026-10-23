@@ -16,6 +16,8 @@ Use these before inventing anything new. "Param" means a field on a level in the
 | `globalShare`, `distanceMs` | Share of far-away users and their extra latency (CDN fixes it) |
 | `dbReadCost`, `appCallCost` | CPU per DB read / per API call |
 | `keepRecords` | Rows kept once `archive` / `expiry` is on |
+| `fanoutPerWrite` | Feed writes per real post (fan-out on write). No queue: app CPU + post latency (0.5 ms per feed write, capped 150). Queue placed: workers on the queue do it; if queue CPU > 100% a backlog grows (`liveStats.fanoutBacklog`). Writes land in the cache (or DB without one) |
+| `celebrityShare`, `celebrityMult` | Share of posts from huge accounts (default 0) and how many times bigger their fan-out is (default 1000) |
 | `audience`, `spikeRange` | Growth cap; spike size override |
 
 ## Machines (roles)
@@ -26,6 +28,7 @@ Each machine has CPU / RAM / Storage / Network parts. Loads are `base + perUser 
 ## Code fixes
 - Guestbook: pagination, index, archive
 - URL shortener: index, base62, idRanges, expiry, redirect301 (toggle)
+- News feed: hybridFanout (celebrity posts skip fan-out; each feed read pulls `celebrityShare × 10` extra reads from the cache, +3 ms)
 
 Each fix is shared and can be reused by any product. Change its wording with the pack's `fixText`.
 
@@ -42,7 +45,7 @@ spike (more traffic), bots (bot traffic ×3–4; spam when `botKind: 'write'`), 
 
 Custom goals read `gs` directly, for example:
 - `gs.guestbook.count` (records stored)
-- `gs.liveStats.*` (botsBlocked, clicksCounted, cleanLinks, …)
+- `gs.liveStats.*` (botsBlocked, clicksCounted, cleanLinks, feedWrites, fanoutBacklog, fanoutClearSec (s in a row with no backlog), …)
 - `gs.serverStatus.*` (cacheHit, clickAccuracy, …)
 - `gs.codeFixes`
 - `gs.appCount()`, `gs.dbCount()`
@@ -50,6 +53,5 @@ Custom goals read `gs` directly, for example:
 ## Ideas for mechanics other products will need
 Add each one generically, as a param or a role:
 - **Chat**: long-lived connections (RAM per connected user on a "websocket" role), fan-out to group members, offline message queue, presence heartbeats
-- **News feed**: fan-out on write vs read (write amplification = followers), celebrity accounts, feed cache
 - **Cloud drive / video**: object storage role (cheap space, slow), large uploads (network), chunking and dedup (a fix cutting storage), transcoding workers via queue
 - **Ride hailing**: frequent location writes (write-heavy), geo index (a fix), sharding by region

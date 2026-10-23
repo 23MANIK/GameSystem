@@ -38,6 +38,8 @@ export default {
   fixes: { index: 2, base62: 2, expiry: 4, idRanges: 7, redirect301: 8 },
   // Bigger (XL) parts unlock with scaling out; the big disk a level earlier (links pile up)
   xlLevel: { default: 4, storage: 3 },
+  // Hints for tools/playtest-headless.mjs: Level 7's goal asks for 3 shards
+  playtest: { shards: { 7: 3 } },
   roleText: URL_SHORTENER_ROLE_TEXT,
   partText: URL_SHORTENER_PART_TEXT,
   fixText: URL_SHORTENER_FIX_TEXT,
