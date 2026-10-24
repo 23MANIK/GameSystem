@@ -38,7 +38,7 @@ const LEVEL_NUMBERS = [
   'readsPerUser', 'writesPerUser', 'pageViewsPerUser', 'pageKB', 'botShare', 'spamPerUser', 'dbReadCost',
   'globalShare', 'distanceMs', 'appCallCost', 'keepRecords', 'cacheHitRate', 'edgeHitRate', 'recordSpace',
   'blobSpaceMult', 'readKB', 'writeKB', 'bigFileShare', 'unverifiedShare', 'listReadsPerUser', 'devicesPerUser',
-  'pollPerDevice', 'conflictShare', 'browsePerUser', 'publicShare', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult'
+  'pollPerDevice', 'conflictShare', 'browsePerUser', 'publicShare', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult', 'dedupShare', 'updateShare'
 ];
 const LEVEL_BOOLS = ['serverMode', 'crashes', 'clickTracking', 'shardIdClash', 'comingSoon'];
 const LEVEL_TEXTS = ['name', 'subtitle', 'intro', 'story', 'completionMessage'];

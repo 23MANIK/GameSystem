@@ -318,6 +318,14 @@ await test('data pack: plays exactly like the hand-made URL shortener', () => {
   const pick = r => [r.level, r.done, r.minutes, r.users, r.coinsEnd, r.apps, r.shards].join(',');
   assert(a.results.map(pick).join('|') === b.results.map(pick).join('|'), 'data pack plays differently');
 });
+await test('data pack: the in-process gate (balance + play-test) passes it', async () => {
+  const { registerPack } = await imp('js/products/registry.js');
+  const { checkGame } = await imp('tools/designgame/checkGame.mjs');
+  registerPack(dp.compileDataPack(usJson));
+  const r = checkGame(usJson.id);
+  assert(r.passed, r.errors.join('; '));
+  assert(r.play.results.length === 8 && r.balance.length === 8, 'missing levels in the report');
+});
 await test('data pack: rejects unknown machines, fixes, goals and fields', () => {
   const bad = JSON.parse(JSON.stringify(usJson));
   bad.roles.teleporter = { unlockLevel: 2 };
