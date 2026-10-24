@@ -31,6 +31,7 @@ Before the game starts, the player picks **one product** to build. Each product 
 - Earnings = revenue − cost. Completing a level shows stats: average users, estimated daily active users, revenue, cost, profit.
 
 ## Done
+- **Create DesignGame (branch v3).** Name a system; Claude researches it, builds levels as a data pack, test-plays them and the game shows up under Community games. Passcode-only creation. See `docs/designgame/README.md`.
 - **Guestbook, 7 levels.** Each adds one piece and one difficulty:
 
   | Level | New piece | New difficulty |

@@ -5,7 +5,7 @@ import { openFeedback } from './ui/Feedback.js';
 // load balancer, cache and CDN as the Guestbook grows. See data/levels.js.
 // ═══════════════════════════════════════════════════════════════════
 
-import GameState from './game/GameState.js';
+import GameState, { SAVE_KEY } from './game/GameState.js';
 import LevelSystem from './game/LevelSystem.js';
 import EventSystem from './game/EventSystem.js';
 import ResourceManager from './game/ResourceManager.js';
@@ -30,6 +30,8 @@ import LevelIntro from './ui/LevelIntro.js';
 import MoneyPanel from './ui/MoneyPanel.js';
 import Presence from './game/Presence.js';
 import ProductPicker from './ui/ProductPicker.js';
+import CreateGame from './ui/CreateGame.js';
+import { ensureGame, isGeneratedId, savedProductId, linkedGameId } from './designgame/client.js';
 import CrashScreen from './ui/CrashScreen.js';
 
 // Seconds of game time at 0 coins, losing money, before the system crashes
@@ -81,8 +83,15 @@ class ScaleArchitect {
     this.presence = new Presence();
     this.presence.onChange(() => this.renderPresence());
     this.presence.peek();
-    this.setupIntroScreen();
+    // A generated game (saved, or opened from a link) must be loaded before the save is read
+    this.loadGeneratedGames().finally(() => this.setupIntroScreen());
     this.animateIntroParticles();
+  }
+
+  async loadGeneratedGames() {
+    const saved = savedProductId(SAVE_KEY);
+    this.linkedGame = linkedGameId();
+    await Promise.all([saved, this.linkedGame].filter(isGeneratedId).map(id => ensureGame(id)));
   }
 
   setupIntroScreen() {
@@ -103,14 +112,19 @@ class ScaleArchitect {
 
     // New Game → pick a product first
     const picker = new ProductPicker(document.getElementById('product-screen'));
-    btnNewGame.addEventListener('click', () => {
-      picker.open((productId) => {
-        this.gameState.reset();
-        this.gameState.productId = productId;
-        this.gameState.coins = LEVELS[0].startingCoins;
-        this.startGame(introScreen);
-      }, null, saveLabel);
+    const creator = new CreateGame(document.getElementById('create-screen'));
+    const play = (productId) => {
+      this.gameState.reset();
+      this.gameState.productId = productId;
+      this.gameState.coins = LEVELS[0].startingCoins;
+      this.startGame(introScreen);
+    };
+    const openPicker = () => picker.open(play, null, saveLabel, {
+      onCreate: () => creator.open({ onPlay: play, onBack: openPicker })
     });
+    btnNewGame.addEventListener('click', openPicker);
+    // Opened from a shared game link: show the picker with that game in it
+    if (this.linkedGame && this.gameState.productId !== this.linkedGame) openPicker();
 
     btnContinue.addEventListener('click', () => {
       this.startGame(introScreen);

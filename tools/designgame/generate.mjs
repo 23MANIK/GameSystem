@@ -465,7 +465,7 @@ export async function runStep(job, client, { maxRepairs = 2 } = {}) {
       }
       case 'research': {
         job.research = await research(client, input, job.check, usage);
-        say(job, `Read ${job.research.sources.length} sources.`);
+        say(job, `Read ${job.research.sources.length} source${job.research.sources.length === 1 ? "" : "s"}.`);
         job.stage = 'plan';
         break;
       }
@@ -498,7 +498,7 @@ export async function runStep(job, client, { maxRepairs = 2 } = {}) {
         } else if (job.round >= maxRepairs) {
           say(job, `Still ${tuned.result.problems.length} problems after ${job.round} repairs.`);
           job.stage = 'failed';
-          job.error = { code: 'unbalanced', message: `The game still has problems after ${job.round} repairs: ${tuned.result.problems.slice(0, 3).join('; ')}` };
+          job.error = { code: 'unbalanced', stage: 'test', message: `The game still has problems after ${job.round} repairs: ${tuned.result.problems.slice(0, 3).join('; ')}` };
         } else {
           say(job, `Found ${tuned.result.problems.length} problem${tuned.result.problems.length === 1 ? '' : 's'}; fixing them.`);
           job.stage = 'repair';

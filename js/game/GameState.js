@@ -13,7 +13,7 @@ import { simulateSystem, DEFAULT_WRITES_PER_USER } from './SystemSimulator.js';
 import { runningCostPerMinute, serverCost } from '../data/serverParts.js';
 import { ROLES, rolesForLevel, roleForComponent } from '../data/roles.js';
 
-const SAVE_KEY = 'scale_architect_save_v4'; // v4: machines map, levels 2–7
+export const SAVE_KEY = 'scale_architect_save_v4'; // v4: machines map, levels 2–7
 const LEVEL_START_KEY = 'scale_architect_level_start_v4'; // the save as each level began
 
 export default class GameState {
