@@ -130,7 +130,13 @@ export function busyPage(retryAfter, reason) {
 </body></html>`;
 }
 
+// Server-side code and notes that are deployed for /api but are not part of the site
+const PRIVATE = /^\/(tools|docs|node_modules)\/|^\/package(-lock)?\.json$/;
+
 export default function middleware(request) {
+  if (PRIVATE.test(new URL(request.url).pathname)) {
+    return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
   const blocked = check(request);
   if (!blocked) return; // let the request through to the site
   const headers = { 'Retry-After': String(blocked.retryAfter), 'Cache-Control': 'no-store' };

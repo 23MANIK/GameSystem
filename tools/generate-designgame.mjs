@@ -33,34 +33,42 @@ const started = Date.now();
 const secs = () => `${Math.round((Date.now() - started) / 1000)}s`;
 
 const STAGE_TEXT = {
-  check: () => 'Checking the prompt…',
-  research: i => `Researching ${i.name} on the web…`,
-  research_done: i => `  ${i.sources.length} sources`,
-  plan: () => 'Planning the levels (numbers, machines, goals)…',
-  details: i => `Writing stories, hints and tutorials for ${i.levels} levels in parallel…`,
-  test: i => (i.round ? `Testing the repaired game (round ${i.round})…` : 'Balancing and test-playing every level…'),
-  repair: i => `  ${i.problems.length} problems, asking for a fix:\n${i.problems.map(p => `    - ${p}`).join('\n')}`,
-  done: i => (i.ok ? 'Passed.' : 'Still failing after repairs.')
+  check: 'Checking the prompt…',
+  research: 'Researching the system on the web…',
+  plan: 'Planning the levels (numbers, machines, goals)…',
+  details: 'Writing stories, hints and tutorials, all levels in parallel…',
+  redetail: 'Rewriting the changed levels…',
+  test: 'Balancing and test-playing every level…',
+  repair: 'Repairing the plan…'
 };
 
-try {
-  const out = await generateGame(input, { onStage: (s, info = {}) => console.log(`[${secs()}] ${STAGE_TEXT[s]?.(info) ?? s}`) });
-  fs.mkdirSync(outDir, { recursive: true });
-  const file = path.join(outDir, `${out.data.id}.pack.json`);
-  fs.writeFileSync(file, JSON.stringify(out.data, null, 2) + '\n');
-  const report = [
-    `# ${out.check.name}: generated game`, '',
-    `Prompt: ${input.prompt}`, '',
-    `Result: **${out.ok ? 'PASS' : 'FAIL'}** after ${out.rounds} repair round(s), ${secs()}.`, '',
-    `Cost: $${out.usage.dollars.toFixed(2)} (${out.usage.calls} calls, ${out.usage.input + out.usage.cacheRead + out.usage.cacheWrite} input / ${out.usage.output} output tokens, ${out.usage.searches} searches)`, '',
-    '## Levels', '', ...out.data.levels.map(L => `${L.level}. **${L.name}**: ${L.subtitle}`), '',
-    out.result.report?.markdown?.replace(/^# .*\n/, '') || `## Problems\n\n${out.result.problems.map(p => `- ${p}`).join('\n')}`, '',
-    '## Research notes', '', out.research.notes, ''
-  ].join('\n');
-  fs.writeFileSync(path.join(outDir, `${out.data.id}-report.md`), report);
-  console.log(`\n${out.ok ? 'PASS' : 'FAIL'}  ${file}  ($${out.usage.dollars.toFixed(2)}, ${secs()})`);
-  process.exit(out.ok ? 0 : 1);
-} catch (e) {
-  console.error(`\nFailed after ${secs()}: ${e.message}`);
+let shown = 0;
+const job = await generateGame(input, {
+  onStep: j => {
+    for (; shown < j.log.length; shown++) console.log(`  ${j.log[shown].text}`);
+    console.log(`[${secs()}] ${STAGE_TEXT[j.stage] || j.stage}`);
+  }
+});
+for (; shown < job.log.length; shown++) console.log(`  ${job.log[shown].text}`);
+const ok = job.stage === 'done';
+const cost = `$${job.usage.dollars.toFixed(2)} (${job.usage.calls} calls, ${job.usage.input + job.usage.cacheRead + job.usage.cacheWrite} input / ${job.usage.output} output tokens, ${job.usage.searches} searches)`;
+if (!job.data) {
+  console.error(`\nFailed after ${secs()}: ${job.error?.message}  ${cost}`);
   process.exit(1);
 }
+fs.mkdirSync(outDir, { recursive: true });
+const file = path.join(outDir, `${job.data.id}.pack.json`);
+fs.writeFileSync(file, JSON.stringify(job.data, null, 2) + '\n');
+const report = [
+  `# ${job.check.name}: generated game`, '',
+  `Prompt: ${input.prompt}`, '',
+  `Result: **${ok ? 'PASS' : 'FAIL'}** after ${job.round} repair round(s), ${secs()}.`, '',
+  `Cost: ${cost}`, '',
+  '## Levels', '', ...job.data.levels.map(L => `${L.level}. **${L.name}**: ${L.subtitle}`), '',
+  '## Log', '', ...job.log.map(l => `- ${l.text}`), '',
+  job.result?.report?.replace(/^# .*\n/, '') || `## Problems\n\n${(job.result?.problems || []).map(p => `- ${p}`).join('\n')}`, '',
+  '## Research notes', '', job.research?.notes || '', ''
+].join('\n');
+fs.writeFileSync(path.join(outDir, `${job.data.id}-report.md`), report);
+console.log(`\n${ok ? 'PASS' : 'FAIL'}  ${file}  ${cost}, ${secs()}`);
+process.exit(ok ? 0 : 1);

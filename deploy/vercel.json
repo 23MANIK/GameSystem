@@ -1,16 +1,31 @@
 {
+  "functions": {
+    "api/designgame.js": {
+      "maxDuration": 300,
+      "includeFiles": "{tools/designgame/**,docs/designgame/**,js/**,package.json}"
+    }
+  },
   "headers": [
     {
       "source": "/(js|css)/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     }
   ]

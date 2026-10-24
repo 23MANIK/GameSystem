@@ -31,6 +31,13 @@ import { splitPack, mergePack } from './split.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
 const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+// The deployed copy keeps the skill's engine notes next to the format doc (see tools/sync-deploy.sh)
+const readEngineNotes = () => {
+  for (const rel of ['.claude/skills/design-product-levels/reference/engine-capabilities.md', 'docs/designgame/engine-capabilities.md']) {
+    if (fs.existsSync(path.join(ROOT, rel))) return read(rel);
+  }
+  throw new Error('engine-capabilities.md not found');
+};
 
 export const MODELS = { main: 'claude-opus-5-5', check: 'claude-haiku-5-5' };
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
@@ -244,7 +251,7 @@ The game can only use the machines, code fixes, traffic params and goal types li
 ${read('docs/designgame/data-pack-format.md')}
 
 # Traffic params the engine models
-${read('.claude/skills/design-product-levels/reference/engine-capabilities.md').split('## Code fixes')[0]}
+${readEngineNotes().split('## Code fixes')[0]}
 
 # The game's machines, code fixes and stats
 ${engineReference()}
@@ -428,60 +435,131 @@ export function changedLevels(before, after) {
   return after.levels.map(L => L.level).filter(n => !before.levels.some(L => L.level === n) || sig(before, n) !== sig(after, n));
 }
 
-// ─── Whole pipeline ───
+// ─── Whole pipeline, one step at a time ───
+
+/*
+ * A job is plain JSON, so a server can save it between steps:
+ *   { input, stage, check, research, outline, messages, details, round, result, data, usage, log, error }
+ * stage: check → research → plan → details → test → (repair → redetail → test)* → done | failed
+ * Each step is one or a few model calls (each well under five minutes).
+ */
+
+export function newJob(input, { idSuffix } = {}) {
+  return { input: normalizeInput(input), idSuffix, stage: 'check', round: 0, usage: newUsage(), log: [], createdAt: new Date().toISOString() };
+}
+
+const say = (job, text) => job.log.push({ at: new Date().toISOString(), stage: job.stage, text });
+
+/** Run the job's next step (mutates and returns the job). */
+export async function runStep(job, client, { maxRepairs = 2 } = {}) {
+  const { input, usage } = job;
+  try {
+    switch (job.stage) {
+      case 'check': {
+        job.check = await checkPrompt(client, input, usage);
+        if (job.idSuffix) job.check.id = `${job.check.id.slice(0, 44)}_${job.idSuffix}`;
+        if (!job.check.ok) throw new GenerateError(`This doesn't look like a system to design: ${job.check.reason}`, 'rejected');
+        say(job, `Making "${job.check.name}" (${job.check.likeWhat}).`);
+        job.stage = 'research';
+        break;
+      }
+      case 'research': {
+        job.research = await research(client, input, job.check, usage);
+        say(job, `Read ${job.research.sources.length} sources.`);
+        job.stage = 'plan';
+        break;
+      }
+      case 'plan': {
+        const { outline, messages } = await plan(client, input, job.check, job.research, usage);
+        Object.assign(job, { outline, messages });
+        say(job, `Planned ${outline.levels.length} levels: ${outline.levels.map(L => L.name).join(', ')}.`);
+        job.stage = 'details';
+        break;
+      }
+      case 'details':
+      case 'redetail': {
+        const levels = job.stage === 'details' ? job.outline.levels.map(L => L.level) : job.redo;
+        const fresh = await writeDetails(client, input, job.check, job.research, job.outline, levels, usage, job.wordNotes || {});
+        const old = job.details || [];
+        job.details = job.outline.levels.map(L => fresh.find(d => d.level === L.level) || old.find(d => d.level === L.level) || { level: L.level });
+        say(job, `Wrote the stories, hints and tutorials for ${levels.length} level${levels.length === 1 ? '' : 's'}.`);
+        delete job.redo;
+        delete job.wordNotes;
+        job.stage = 'test';
+        break;
+      }
+      case 'test': {
+        const tuned = gateAndTune(mergePack(job.outline, job.details));
+        job.data = tuned.data;
+        job.result = { ok: tuned.result.ok, stage: tuned.result.stage, problems: tuned.result.problems, warnings: tuned.result.warnings, report: tuned.result.report?.markdown };
+        if (tuned.result.ok) {
+          say(job, `Every level passed the balance check and the test-play bot${tuned.result.warnings.length ? ` (${tuned.result.warnings.length} warnings)` : ''}.`);
+          finish(job);
+        } else if (job.round >= maxRepairs) {
+          say(job, `Still ${tuned.result.problems.length} problems after ${job.round} repairs.`);
+          job.stage = 'failed';
+          job.error = { code: 'unbalanced', message: `The game still has problems after ${job.round} repairs: ${tuned.result.problems.slice(0, 3).join('; ')}` };
+        } else {
+          say(job, `Found ${tuned.result.problems.length} problem${tuned.result.problems.length === 1 ? '' : 's'}; fixing them.`);
+          job.stage = 'repair';
+        }
+        break;
+      }
+      case 'repair': {
+        job.round += 1;
+        const tunedOutline = splitPack(job.data).outline;
+        // Problems in the words go back to that level's writer; the rest to the planner
+        const wordNotes = {};
+        const outlineProblems = [];
+        for (const p of job.result.problems) {
+          const n = detailLevelOf(p, tunedOutline);
+          if (n) (wordNotes[n] ||= []).push(p); else outlineProblems.push(p);
+        }
+        let next = tunedOutline;
+        if (outlineProblems.length || job.result.stage === 'play') {
+          ({ outline: next, messages: job.messages } = await repairOutline(client, job.messages, tunedOutline,
+            outlineProblems.length ? outlineProblems : job.result.problems, job.result.warnings, job.result.stage, usage));
+        }
+        job.redo = [...new Set([...changedLevels(tunedOutline, next), ...Object.keys(wordNotes).map(Number)])].sort((a, b) => a - b);
+        job.wordNotes = wordNotes;
+        job.outline = next;
+        say(job, `Repair ${job.round}: adjusted the plan${job.redo.length ? `, rewriting level${job.redo.length === 1 ? '' : 's'} ${job.redo.join(', ')}` : ''}.`);
+        job.stage = job.redo.length ? 'redetail' : 'test';
+        break;
+      }
+      default:
+        throw new GenerateError(`Nothing to do in stage "${job.stage}".`, 'bad_stage');
+    }
+  } catch (e) {
+    job.error = { code: e.code || 'error', message: e.message || String(e), stage: job.stage };
+    say(job, `Failed: ${job.error.message}`);
+    job.stage = 'failed';
+  }
+  job.updatedAt = new Date().toISOString();
+  return job;
+}
+
+function finish(job) {
+  const final = job.data;
+  final.meta = { ...final.meta, sources: final.meta?.sources?.length ? final.meta.sources : job.research.sources };
+  final.generated = { at: new Date().toISOString(), model: MODELS.main, prompt: job.input.prompt, input: job.input, repairs: job.round };
+  job.stage = 'done';
+}
+
+export const isFinished = job => job.stage === 'done' || job.stage === 'failed';
 
 /**
- * Run every stage. onStage(name, info) is called as each one starts and ends.
- * Returns { ok, data, check, research, result, usage, rounds }.
+ * Run a whole job here and now (the CLI). onStage(job) is called before each step.
+ * Returns the finished job: job.stage is 'done' (job.data is the game) or 'failed' (job.error).
  */
-export async function generateGame(input, { client, onStage = () => {}, maxRepairs = 2 } = {}) {
+export async function generateGame(input, { client, onStep = () => {}, maxRepairs = 2 } = {}) {
   client ??= await makeClient();
-  const usage = newUsage();
-  const inp = normalizeInput(input);
-
-  onStage('check');
-  const check = await checkPrompt(client, inp, usage);
-  if (!check.ok) throw new GenerateError(`This doesn't look like a system to design: ${check.reason}`, 'rejected');
-
-  onStage('research', { name: check.name });
-  const researchOut = await research(client, inp, check, usage);
-  onStage('research_done', { sources: researchOut.sources });
-
-  onStage('plan');
-  let { outline, messages } = await plan(client, inp, check, researchOut, usage);
-  onStage('details', { levels: outline.levels.length });
-  let details = await writeDetails(client, inp, check, researchOut, outline, outline.levels.map(L => L.level), usage);
-
-  let tuned = null;
-  let rounds = 0;
-  for (;;) {
-    onStage('test', { round: rounds });
-    tuned = gateAndTune(mergePack(outline, details));
-    if (tuned.result.ok || rounds >= maxRepairs) break;
-    rounds += 1;
-    onStage('repair', { round: rounds, problems: tuned.result.problems });
-    const tunedOutline = splitPack(tuned.data).outline;
-    // Problems in the words go back to that level's writer; the rest to the planner
-    const wordNotes = {};
-    const outlineProblems = [];
-    for (const p of tuned.result.problems) {
-      const n = detailLevelOf(p, tunedOutline);
-      if (n) (wordNotes[n] ||= []).push(p); else outlineProblems.push(p);
-    }
-    let next = tunedOutline;
-    if (outlineProblems.length || tuned.result.stage === 'play') {
-      ({ outline: next, messages } = await repairOutline(client, messages, tunedOutline, outlineProblems.length ? outlineProblems : tuned.result.problems, tuned.result.warnings, tuned.result.stage, usage));
-    }
-    const redo = [...new Set([...changedLevels(tunedOutline, next), ...Object.keys(wordNotes).map(Number)])].sort((a, b) => a - b);
-    const fresh = redo.length ? await writeDetails(client, inp, check, researchOut, next, redo, usage, wordNotes) : [];
-    details = next.levels.map(L => fresh.find(d => d.level === L.level) || details.find(d => d.level === L.level) || { level: L.level });
-    outline = next;
+  const job = newJob(input);
+  while (!isFinished(job)) {
+    onStep(job);
+    await runStep(job, client, { maxRepairs });
   }
-  const final = tuned.data;
-  final.meta = { ...final.meta, sources: final.meta?.sources?.length ? final.meta.sources : researchOut.sources };
-  final.generated = { at: new Date().toISOString(), model: MODELS.main, prompt: inp.prompt, input: inp, repairs: rounds };
-  onStage('done', { ok: tuned.result.ok });
-  return { ok: tuned.result.ok, data: final, check, research: researchOut, result: tuned.result, usage, rounds };
+  return job;
 }
 
 /** Fill in defaults and clamp the player's choices. */

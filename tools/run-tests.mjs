@@ -34,7 +34,7 @@ const imp = rel => import(pathToFileURL(path.join(ROOT, rel)).href);
 
 // ─── 1. Syntax ───
 await test('every JS file parses', () => {
-  const files = [...walk(path.join(ROOT, 'js')), ...walk(path.join(ROOT, 'tools')), path.join(ROOT, 'deploy/middleware.js'), path.join(ROOT, 'deploy/api/presence.js'), path.join(ROOT, 'deploy/api/feedback.js')]
+  const files = [...walk(path.join(ROOT, 'js')), ...walk(path.join(ROOT, 'tools')), path.join(ROOT, 'deploy/middleware.js'), path.join(ROOT, 'deploy/api/presence.js'), path.join(ROOT, 'deploy/api/feedback.js'), path.join(ROOT, 'deploy/api/designgame.js')]
     .filter(f => /\.(m?js)$/.test(f));
   const bad = [];
   for (const f of files) {
@@ -347,9 +347,10 @@ await test('generator: the whole pipeline runs with a stand-in model, and repair
     } }) } }
   };
   const stages = [];
-  const out = await gen.generateGame({ prompt: 'a url shortener' }, { client, onStage: s => stages.push(s) });
-  assert(out.ok, `not ok: ${out.result.problems.join('; ')}`);
-  assert(out.rounds === 1 && stages.includes('repair'), 'repair round did not run');
+  const out = await gen.generateGame({ prompt: 'a url shortener' }, { client, onStep: j => stages.push(j.stage) });
+  assert(out.stage === 'done', `not done: ${out.error?.message || out.result?.problems.join('; ')}`);
+  assert(out.round === 1 && stages.includes('repair') && stages.includes('redetail'), `repair round did not run: ${stages.join(' → ')}`);
+  assert(JSON.parse(JSON.stringify(out)).data.id === out.data.id, 'job is not plain JSON');
   assert(detailCalls === 9, `expected 8 + 1 level rewrites, got ${detailCalls}`);
   assert(out.data.id === 'dg_url_shortener', `id ${out.data.id}`);
   assert(out.data.meta.sources.length && out.usage.dollars > 0, 'sources or usage missing');
@@ -381,6 +382,59 @@ await test('data pack: text keeps simple formatting and drops HTML', () => {
   const bad = JSON.parse(JSON.stringify(usJson));
   bad.levels[0].story = 'Hi <script>alert(1)</script>';
   assert(!dp.compileDataPack(bad).levels[0].story.includes('<script'), 'story not cleaned');
+});
+
+// ─── 10. DesignGame API ───
+await test('designgame api: server code and notes are not served as files', async () => {
+  for (const p of ['/tools/designgame/generate.mjs', '/docs/designgame/data-pack-format.md', '/package.json']) {
+    const r = mw.default(req(p, '7.7.7.7'));
+    assert(r && r.status === 404, `${p} is served`);
+  }
+  assert(!mw.default(req('/js/main.js', '7.7.7.8')), 'game files blocked');
+});
+await test('designgame api: passcode, daily cap, a whole job, publish and list', async () => {
+  const svc = await imp('tools/designgame/service.mjs');
+  const { splitPack } = await imp('tools/designgame/split.mjs');
+  const { outline, details } = splitPack(usJson);
+  const msg = text => ({ content: [{ type: 'text', text }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } });
+  const json = x => msg('```json\n' + JSON.stringify(x) + '\n```');
+  const client = {
+    messages: { create: async () => msg(JSON.stringify({ ok: true, reason: 'ok', name: 'URL Shortener', likeWhat: 'like bit.ly', icon: '🔗', slug: 'url_shortener' })) },
+    beta: { messages: { stream: r => ({ finalMessage: async () => (r.tools ? msg('Research notes. '.repeat(40))
+      : r.system[0].text.includes('OUTLINE') ? json(outline)
+        : json(details.find(d => d.level === Number(r.messages[0].content.match(/details for level (\d+)/)[1])))) }) } }
+  };
+  const store = svc.memoryStore();
+  const env = { DESIGNGAME_PASSCODE: 'open sesame', DESIGNGAME_DAILY_MAX: '2', ANTHROPIC_API_KEY: 'x' };
+  const call = (method, q, b, ip = '5.5.5.5') => svc.handleAction(method, q, b, { store, env, ip, client });
+
+  assert((await call('POST', {}, { action: 'auth', passcode: 'nope' })).status === 401, 'wrong passcode accepted');
+  for (let i = 0; i < 5; i++) await call('POST', {}, { action: 'auth', passcode: 'nope' }, '6.6.6.6');
+  assert((await call('POST', {}, { action: 'auth', passcode: 'open sesame' }, '6.6.6.6')).status === 429, 'passcode guessing not capped');
+  assert((await call('POST', {}, { action: 'auth', passcode: 'open sesame' })).status === 200, 'right passcode refused');
+  assert((await svc.handleAction('POST', {}, { action: 'auth', passcode: 'x' }, { store, env: {}, client })).status === 503, 'works without a passcode set');
+
+  const started = await call('POST', {}, { action: 'start', passcode: 'open sesame', input: { prompt: 'a url shortener', levels: 8 } });
+  assert(started.status === 200 && /^[a-f0-9]{16}$/.test(started.body.jobId), 'start failed');
+  let view;
+  for (let i = 0; i < 12; i++) {
+    view = (await call('POST', {}, { action: 'step', passcode: 'open sesame', jobId: started.body.jobId })).body;
+    // The job is saved as JSON between steps, like on the server
+    if (view.done) break;
+  }
+  assert(view.stage === 'done' && /^dg_url_shortener_[a-f0-9]{4}$/.test(view.gameId), `job ended in ${view.stage}: ${view.error?.message}`);
+  assert(!('messages' in view) && view.log.length >= 4, 'job view leaks internals or has no log');
+  const game = await call('GET', { action: 'game', id: view.gameId });
+  assert(game.status === 200 && game.body.levels.length === 8, 'game not stored');
+  assert((await call('GET', { action: 'list' })).body.games.length === 0, 'unpublished game is listed');
+  assert((await call('POST', {}, { action: 'publish', passcode: 'open sesame', id: view.gameId, public: true })).status === 200, 'publish failed');
+  const list = (await call('GET', { action: 'list' })).body.games;
+  assert(list.length === 1 && list[0].name === 'URL Shortener' && list[0].levels.length === 8, 'published game missing from the list');
+
+  await call('POST', {}, { action: 'start', passcode: 'open sesame', input: { prompt: 'chat app' } });
+  const third = await call('POST', {}, { action: 'start', passcode: 'open sesame', input: { prompt: 'video' } });
+  assert(third.status === 429, 'daily cap not enforced');
+  assert((await call('GET', { action: 'game', id: '../etc' })).status === 400, 'bad id accepted');
 });
 
 // ─── Report ───
