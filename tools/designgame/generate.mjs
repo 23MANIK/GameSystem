@@ -6,10 +6,14 @@
  *   1. checkPrompt  Claude Haiku 5.5: is this a system to design? Name and id.
  *   2. research     Claude Opus 5.5 + web search / fetch: requirements, numbers,
  *                   deep dives, the order a real system adds its parts, sources.
- *   3. design       Claude Opus 5.5: the levels as a data pack (JSON).
- *   4. gate         Our own code: validate, auto-tune the money numbers, then the
+ *   3. plan         Claude Opus 5.5: the outline (numbers, machines, goals) as JSON.
+ *   4. details      Claude Opus 5.5, one call per level in parallel: stories,
+ *                   hints, tutorial. Split this way so no call runs for long
+ *                   (server functions have a time limit) and repairs stay small.
+ *   5. gate         Our own code: validate, auto-tune the money numbers, then the
  *                   balance check and headless play-test (tools/designgame/checkGame.mjs).
- *   5. repair       Claude Opus 5.5 fixes what the gate found (up to 2 rounds).
+ *   6. repair       Claude Opus 5.5 fixes the outline (and rewrites the words of
+ *                   any level that changed), up to 2 rounds.
  *
  * See docs/designgame/data-pack-format.md for the JSON format.
  */
@@ -22,6 +26,7 @@ import { registerPack } from '../../js/products/registry.js';
 import { ROLES } from '../../js/data/roles.js';
 import { CODE_FIXES } from '../../js/data/codeFixes.js';
 import { checkGame } from './checkGame.mjs';
+import { splitPack, mergePack } from './split.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -199,7 +204,7 @@ function dedupeSources(found, notes) {
   return (cited.length ? cited : all).slice(0, 10);
 }
 
-// ─── 3. Design ───
+// ─── 3. Design: an outline, then every level's details in parallel ───
 
 /** What the engine can do, listed from the live game data so it never goes stale. */
 function engineReference() {
@@ -209,30 +214,33 @@ function engineReference() {
     + `## Stats goals can watch\n- counter goals (gs.liveStats): ${COUNTER_STATS.join(', ')}\n- statAtLeast goals (gs.serverStatus, 0–1): ${SHARE_STATS.join(', ')}\n`;
 }
 
-let designSystemCache = null;
-function designSystem() {
-  if (designSystemCache) return designSystemCache;
-  designSystemCache = `You design levels for Scale Architect, a browser game that teaches system design. The player grows one product from a single server to a large system. Each level is one real problem the player feels (things get slow, a disk fills up, bots attack, a server crashes) and one new piece that solves it.
+const example = () => splitPack(JSON.parse(read('tools/designgame/url-shortener.pack.json')));
 
-You write the whole game as one JSON "data pack". The game can only use the machines, code fixes, traffic params and goal types listed below: you cannot invent new ones. When a real-world piece has no match, map it onto the closest existing machine and say so in that level's realWorld notes, or leave it out.
+const GAME_INTRO = 'Scale Architect is a browser game that teaches system design. The player grows one product from a single server to a large system. Each level is one real problem the player feels (things get slow, a disk fills up, bots attack, a server crashes) and one new piece that solves it.';
+
+let planSystemCache = null;
+function planSystem() {
+  if (planSystemCache) return planSystemCache;
+  planSystemCache = `${GAME_INTRO}
+
+You write the OUTLINE of a new game: every level's numbers, machines, code fixes and goals, as JSON. Another step writes the stories, hints and tutorial afterwards, so leave those out.
+
+The game can only use the machines, code fixes, traffic params and goal types listed below: you cannot invent new ones. When a real-world piece has no match, map it onto the closest existing machine or leave it out.
 
 # Rules for levels
 - Level 1 is always "one server does everything" (mode "single-server", roles app only, startingCoins 500, coinRate 25, spikeRange [1.2, 1.4]).
 - Level 2 moves the data to its own database (mode "app-db" from here on).
 - Order levels easy → hard, following the real order of growth from the research.
-- Each level adds ONE new machine (or one scale-out step: more app servers behind a load balancer, or database shards), unlocked at that level in "roles". Two pieces share a level only when they are one problem (e.g. shards + ID generator).
-- The new piece must be needed: set the level's traffic params so the level can't be won without it (e.g. bots via botShare need the gateway; far-away users via globalShare/distanceMs need the CDN; a hot read set via readsPerUser + cacheHitRate needs the cache; crashes: true needs a load balancer and several app servers).
+- Each level adds ONE new machine (or one scale-out step: more app servers behind a load balancer, or database shards), unlocked at that level in "roles". Two pieces share a level only when they are one problem (e.g. shards + ID generator). Set levelRole for every level.
+- The new piece must be needed: set the level's traffic params so the level can't be won without it (bots via botShare need the gateway; far-away users via globalShare/distanceMs need the CDN; heavy reads with cacheHitRate need the cache; crashes: true needs a load balancer and several app servers; clickTracking needs the queue).
 - Keep real ratios and orders of magnitude (read:write ratio, item sizes), but scale absolute numbers so a level takes minutes. User targets grow roughly 100 → 400 → 600 → 1,500 → 2,500 → 3,500 → 5,000.
 - audience ≈ 1.25 × userTarget. coinRate: 25 on level 1, then about 4–8 (the game re-tunes money numbers automatically, so rough values are fine).
-- Every level has goals: one "placed" goal for its new machine (or a "machines" goal for scale-out), a "users" goal at its userTarget, one or two goals about the level's problem (latency, a counter, errorRate, statAtLeast, cpuUnder, fixOwned), often an "incident" goal, and a "profit" goal last.
-- Hints are practical: say which tab to open and what to watch. Plain words, short sentences.
-- Tutorial: levels 1 and 2 copy the example's step lists (same ids and kinds, your own words for this product). Later levels use { "newMachine": { role, welcome, buy, explain } }; add "extra" steps for scale-out (builderTab "app" with advanceOn "appServerPlaced", or builderTab "db" with advanceOn "dbShardPlaced").
-- story: what the player faces, 2–3 sentences. completionMessage: what they learned and what comes next. realWorld: 2–3 real numbers or services, one per item. feature: the product feature and its main endpoints (rate: readsPerSec or writesPerSec).
-- vocab: the product's own words (record "ride", records "rides", writeFails "every new ride request fails", readName "location lookup"). incidents: 2–3 stories per kind, in this product's world.
+- Goals per level: a "placed" goal for its new machine (or a "machines" goal for scale-out), a "users" goal at its userTarget, one or two goals about the level's problem (latency, counter, errorRate, statAtLeast, cpuUnder, fixOwned), often an "incident" goal, and a "profit" goal last. Give goals a short label when the default wouldn't say what this product does. Leave out "hint": it is written later.
+- vocab: the product's own words (record "ride", records "rides", writeFails "every new ride request fails", readName "location lookup"). incidents: 2–3 short stories per kind, in this product's world. Wording overrides (roleText, fixText…) only where the default would be wrong for this product.
+- playtest (optional): how many app servers / shards the test bot should run per level, e.g. { "apps": { "4": 3 }, "shards": { "7": 3 } }; add it when a goal asks for a specific number.
 - Only <strong>, <em> and <code> are allowed inside text.
-- playtest (optional) tells the test bot how many app servers / shards to run per level, e.g. { "apps": { "4": 3 }, "shards": { "7": 3 } }; add it when a goal asks for a specific number.
 
-# The format
+# The full data pack format (the outline is this without "tutorial", without goal "hint", and without the level fields intro, story, completionMessage, realWorld, unlockedFeatures, feature)
 ${read('docs/designgame/data-pack-format.md')}
 
 # Traffic params the engine models
@@ -241,51 +249,105 @@ ${read('.claude/skills/design-product-levels/reference/engine-capabilities.md').
 # The game's machines, code fixes and stats
 ${engineReference()}
 
-# A complete example: the URL Shortener as a data pack
+# Example: the URL Shortener's outline
 \`\`\`json
-${read('tools/designgame/url-shortener.pack.json')}
+${JSON.stringify(example().outline)}
 \`\`\`
 
-Answer with only the JSON data pack, in one \`\`\`json block.`;
-  return designSystemCache;
+Answer with only the outline JSON, in one \`\`\`json block.`;
+  return planSystemCache;
 }
 
-function designRequest(input, check, researchOut) {
-  return [
-    `Design "${check.name}" (${check.likeWhat}). id: "${check.id}". meta.icon: "${check.icon}".`,
-    `Number of levels: ${input.levels}.`,
-    input.focus?.length ? `Lean the levels toward: ${input.focus.join(', ')}.` : '',
-    input.audience === 'interview'
-      ? 'The players are preparing for system design interviews: use the real terms, mention trade-offs interviewers ask about, keep the tutorial short.'
-      : 'The players are beginners: explain each idea simply in the tutorial and hints.',
-    `The player's request: <request>${String(input.prompt).slice(0, 600)}</request>`,
-    `Research:\n<research>\n${researchOut.notes}\n</research>`,
-    `Put these in meta.sources: ${JSON.stringify(researchOut.sources)}`
-  ].filter(Boolean).join('\n\n');
+let detailSystemCache = null;
+function detailSystem() {
+  if (detailSystemCache) return detailSystemCache;
+  const ex = example().details;
+  detailSystemCache = `${GAME_INTRO}
+
+The game's outline (numbers, machines, goals) is done. You write the words for ONE level, as JSON:
+
+{
+  "level": <number>,
+  "intro": "one sentence: the problem, as the level opens",
+  "story": "what the player faces, 2–3 sentences, in this product's world",
+  "completionMessage": "what they learned and what comes next (the next level's problem), 1–2 sentences",
+  "realWorld": ["2–3 real numbers or services, one per item"],
+  "unlockedFeatures": ["the new machine and fixes, as short chip labels"],
+  "feature": { "name": "...", "summary": "1–2 sentences", "endpoints": [{ "method": "GET|POST|...", "path": "/api/...", "does": "...", "rate": "readsPerSec|writesPerSec" }] },
+  "goalHints": ["one hint per goal of this level, in the same order as the outline's goals"],
+  "tutorial": <this level's tutorial>
 }
 
-async function callDesigner(client, messages, usage) {
+Rules:
+- Hints are practical: which tab to open (Server → <machine> tab, Code fixes), what to watch, why it works. Plain words, short sentences.
+- Tutorial: levels 1 and 2 use step lists shaped exactly like the examples below (same ids, kinds, events and highlights; your own words for this product). Later levels use { "newMachine": { "role", "welcome", "buy", "explain" } } with the level's new machine; for a scale-out level add "extra" steps like the level 4 example (builderTab "app" + advanceOn "appServerPlaced", or builderTab "db" + advanceOn "dbShardPlaced").
+- "welcome" opens with "Level N!" and names the problem; "buy" says which parts matter for that machine and ends with "(Closed it? Tap Server again.)"; "explain" says what changed and points to <strong>Goals</strong>.
+- Use the product's own words (its vocab). Only <strong>, <em> and <code> are allowed inside text. Write in your own words: never copy sentences from the research sources.
+
+# Tutorial step format
+${read('docs/designgame/data-pack-format.md').split('## Tutorial')[1].split('## Text')[0]}
+
+# Examples (URL Shortener levels 1, 2 and 4)
+\`\`\`json
+${JSON.stringify([ex[0], ex[1], ex[3]])}
+\`\`\`
+
+Answer with only this level's JSON, in one \`\`\`json block.`;
+  return detailSystemCache;
+}
+
+async function callModel(client, { system, messages, effort, maxTokens }, usage, stage) {
   const message = await client.beta.messages.stream({
     model: MODELS.main,
-    max_tokens: 64000,
+    max_tokens: maxTokens,
     betas: [FALLBACK_BETA],
     fallbacks: 'default',
     thinking: { type: 'adaptive' },
-    output_config: { effort: 'high' },
-    system: [{ type: 'text', text: designSystem(), cache_control: { type: 'ephemeral' } }],
+    output_config: { effort },
+    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
     messages
   }).finalMessage();
   addUsage(usage, MODELS.main, message.usage);
-  checkStop(message, 'design');
+  checkStop(message, stage);
   return message;
 }
 
-/** Design the levels. Returns { data, messages } (messages let repair continue the conversation). */
-export async function design(client, input, check, researchOut, usage = newUsage()) {
-  const messages = [{ role: 'user', content: designRequest(input, check, researchOut) }];
-  const message = await callDesigner(client, messages, usage);
+function briefing(input, check, researchOut) {
+  return [
+    `Game: "${check.name}" (${check.likeWhat}). id: "${check.id}". meta.icon: "${check.icon}".`,
+    input.focus?.length ? `Lean the levels toward: ${input.focus.join(', ')}.` : '',
+    input.audience === 'interview'
+      ? 'The players are preparing for system design interviews: use the real terms and the trade-offs interviewers ask about; keep the tutorial short.'
+      : 'The players are beginners: explain each idea simply.',
+    `The player's request: <request>${String(input.prompt).slice(0, 600)}</request>`,
+    `Research:\n<research>\n${researchOut.notes}\n</research>`
+  ].filter(Boolean).join('\n\n');
+}
+
+/** Plan the game: the outline JSON. Returns { outline, messages } (messages let repair continue). */
+export async function plan(client, input, check, researchOut, usage = newUsage()) {
+  const messages = [{
+    role: 'user',
+    content: `${briefing(input, check, researchOut)}\n\nNumber of levels: ${input.levels}.\nPut these in meta.sources: ${JSON.stringify(researchOut.sources)}`
+  }];
+  const message = await callModel(client, { system: planSystem(), messages, effort: 'high', maxTokens: 48000 }, usage, 'plan');
   messages.push({ role: 'assistant', content: message.content });
-  return { data: extractJson(textOf(message)), messages };
+  const outline = extractJson(textOf(message));
+  outline.id = check.id;
+  outline.format = 1;
+  return { outline, messages };
+}
+
+/** Write the words for some levels, in parallel. Returns [details, …] in level order. */
+export async function writeDetails(client, input, check, researchOut, outline, levels, usage = newUsage(), notes = {}) {
+  const shared = `${briefing(input, check, researchOut)}\n\nThe game's outline:\n\`\`\`json\n${JSON.stringify(outline)}\n\`\`\``;
+  return Promise.all(levels.map(async n => {
+    const ask = `${shared}\n\nWrite the details for level ${n} (it has ${outline.goals[n]?.length || 0} goals).${notes[n] ? `\n\nFix these problems from the last version:\n${notes[n].map(p => `- ${p}`).join('\n')}` : ''}`;
+    const message = await callModel(client, { system: detailSystem(), messages: [{ role: 'user', content: ask }], effort: 'medium', maxTokens: 16000 }, usage, `level ${n} details`);
+    const d = extractJson(textOf(message));
+    d.level = n;
+    return d;
+  }));
 }
 
 // ─── 4. Gate: validate, tune, test ───
@@ -330,21 +392,40 @@ export function gateAndTune(data) {
 
 // ─── 5. Repair ───
 
-export async function repair(client, messages, data, result, usage = newUsage()) {
+/** Which levels' words a problem points at (tutorial, hints, stories), or null for the outline. */
+export function detailLevelOf(problem, outline) {
+  let m = problem.match(/^tutorial\.(\d+)/) || problem.match(/^goals\.(\d+)\[\d+\]\.hint/);
+  if (m) return Number(m[1]);
+  m = problem.match(/^levels\[(\d+)\]\.(intro|story|completionMessage|realWorld|unlockedFeatures|feature)/);
+  if (m) return outline.levels[Number(m[1])]?.level ?? null;
+  return null;
+}
+
+/** Ask the planner to fix the outline. Returns { outline, messages }. */
+export async function repairOutline(client, messages, outline, problems, warnings, stage, usage = newUsage()) {
   const ask = [
-    'The game checker found problems with this data pack. Fix them and answer with the whole corrected data pack in one ```json block.',
-    result.stage === 'format'
+    'The game checker found problems. Fix the outline and answer with the whole corrected outline in one ```json block.',
+    stage === 'format'
       ? 'These fields are not valid:'
-      : 'It is valid, but the balance check and test-play bot found these problems (a level the bot is "stuck" on usually has a goal that cannot be reached, or traffic numbers that are too high for the machines available at that level):',
-    result.problems.map(p => `- ${p}`).join('\n'),
-    result.warnings?.length ? `Warnings (fix if easy):\n${result.warnings.map(w => `- ${w}`).join('\n')}` : '',
-    'The current version (with re-tuned money numbers):',
-    '```json\n' + JSON.stringify(data) + '\n```'
+      : 'It is valid, but the balance check and test-play bot found these problems (a level the bot is "stuck" on usually has a goal that cannot be reached, or traffic too heavy for the machines available at that level; "still works without X" means the level\'s traffic doesn\'t need its new machine yet):',
+    problems.map(p => `- ${p}`).join('\n'),
+    warnings?.length ? `Warnings (fix if easy):\n${warnings.map(w => `- ${w}`).join('\n')}` : '',
+    'The current outline (money numbers re-tuned by the game):',
+    '```json\n' + JSON.stringify(outline) + '\n```'
   ].filter(Boolean).join('\n\n');
   const convo = [...messages, { role: 'user', content: ask }];
-  const message = await callDesigner(client, convo, usage);
+  const message = await callModel(client, { system: planSystem(), messages: convo, effort: 'high', maxTokens: 48000 }, usage, 'repair');
   convo.push({ role: 'assistant', content: message.content });
-  return { data: extractJson(textOf(message)), messages: convo };
+  const fixed = extractJson(textOf(message));
+  fixed.id = outline.id;
+  fixed.format = 1;
+  return { outline: fixed, messages: convo };
+}
+
+/** Levels whose words must be rewritten after the outline changed (new machine or different goals). */
+export function changedLevels(before, after) {
+  const sig = (o, n) => JSON.stringify([o.levelRole?.[n], (o.goals?.[n] || []).map(g => [g.type, g.role, g.kind, g.fix, g.stat])]);
+  return after.levels.map(L => L.level).filter(n => !before.levels.some(L => L.level === n) || sig(before, n) !== sig(after, n));
 }
 
 // ─── Whole pipeline ───
@@ -356,8 +437,7 @@ export async function repair(client, messages, data, result, usage = newUsage())
 export async function generateGame(input, { client, onStage = () => {}, maxRepairs = 2 } = {}) {
   client ??= await makeClient();
   const usage = newUsage();
-  const inp = { ...DEFAULT_INPUT, ...input };
-  inp.levels = Math.min(10, Math.max(5, Number(inp.levels) || 8));
+  const inp = normalizeInput(input);
 
   onStage('check');
   const check = await checkPrompt(client, inp, usage);
@@ -367,26 +447,50 @@ export async function generateGame(input, { client, onStage = () => {}, maxRepai
   const researchOut = await research(client, inp, check, usage);
   onStage('research_done', { sources: researchOut.sources });
 
-  onStage('design');
-  let { data, messages } = await design(client, inp, check, researchOut, usage);
-  data.id = check.id;
-  data.format = 1;
+  onStage('plan');
+  let { outline, messages } = await plan(client, inp, check, researchOut, usage);
+  onStage('details', { levels: outline.levels.length });
+  let details = await writeDetails(client, inp, check, researchOut, outline, outline.levels.map(L => L.level), usage);
 
   let tuned = null;
   let rounds = 0;
   for (;;) {
     onStage('test', { round: rounds });
-    tuned = gateAndTune(data);
+    tuned = gateAndTune(mergePack(outline, details));
     if (tuned.result.ok || rounds >= maxRepairs) break;
     rounds += 1;
     onStage('repair', { round: rounds, problems: tuned.result.problems });
-    ({ data, messages } = await repair(client, messages, tuned.data, tuned.result, usage));
-    data.id = check.id;
-    data.format = 1;
+    const tunedOutline = splitPack(tuned.data).outline;
+    // Problems in the words go back to that level's writer; the rest to the planner
+    const wordNotes = {};
+    const outlineProblems = [];
+    for (const p of tuned.result.problems) {
+      const n = detailLevelOf(p, tunedOutline);
+      if (n) (wordNotes[n] ||= []).push(p); else outlineProblems.push(p);
+    }
+    let next = tunedOutline;
+    if (outlineProblems.length || tuned.result.stage === 'play') {
+      ({ outline: next, messages } = await repairOutline(client, messages, tunedOutline, outlineProblems.length ? outlineProblems : tuned.result.problems, tuned.result.warnings, tuned.result.stage, usage));
+    }
+    const redo = [...new Set([...changedLevels(tunedOutline, next), ...Object.keys(wordNotes).map(Number)])].sort((a, b) => a - b);
+    const fresh = redo.length ? await writeDetails(client, inp, check, researchOut, next, redo, usage, wordNotes) : [];
+    details = next.levels.map(L => fresh.find(d => d.level === L.level) || details.find(d => d.level === L.level) || { level: L.level });
+    outline = next;
   }
   const final = tuned.data;
   final.meta = { ...final.meta, sources: final.meta?.sources?.length ? final.meta.sources : researchOut.sources };
-  final.generated = { at: new Date().toISOString(), model: MODELS.main, prompt: String(inp.prompt).slice(0, 600), input: inp, repairs: rounds };
+  final.generated = { at: new Date().toISOString(), model: MODELS.main, prompt: inp.prompt, input: inp, repairs: rounds };
   onStage('done', { ok: tuned.result.ok });
   return { ok: tuned.result.ok, data: final, check, research: researchOut, result: tuned.result, usage, rounds };
+}
+
+/** Fill in defaults and clamp the player's choices. */
+export function normalizeInput(input = {}) {
+  const inp = { ...DEFAULT_INPUT, ...input };
+  inp.prompt = String(inp.prompt || '').trim().slice(0, 600);
+  inp.levels = Math.min(10, Math.max(5, Math.round(Number(inp.levels) || 8)));
+  inp.focus = (Array.isArray(inp.focus) ? inp.focus : []).map(f => String(f).slice(0, 40)).slice(0, 6);
+  inp.audience = inp.audience === 'interview' ? 'interview' : 'beginner';
+  inp.sources = (Array.isArray(inp.sources) ? inp.sources : []).filter(u => /^https:\/\/[^\s]+$/.test(u)).slice(0, 5);
+  return inp;
 }

@@ -326,25 +326,40 @@ await test('data pack: the in-process gate (balance + play-test) passes it', asy
   assert(r.passed, r.errors.join('; '));
   assert(r.play.results.length === 8 && r.balance.length === 8, 'missing levels in the report');
 });
-await test('generator: the whole pipeline runs with a stand-in model, and repairs a broken design', async () => {
+await test('generator: the whole pipeline runs with a stand-in model, and repairs a broken outline', async () => {
   const gen = await imp('tools/designgame/generate.mjs');
-  const good = JSON.parse(JSON.stringify(usJson));
-  const broken = JSON.parse(JSON.stringify(usJson));
-  broken.goals[2][0] = { type: 'teleport', hint: 'x' };
-  const replies = { design: [broken, good] };
+  const { splitPack } = await imp('tools/designgame/split.mjs');
+  const { outline: good, details } = splitPack(usJson);
+  const broken = JSON.parse(JSON.stringify(good));
+  broken.goals[2][1] = { type: 'teleport' };
+  const plans = [broken, good];
+  let detailCalls = 0;
   const msg = (text, extra = {}) => ({ content: [{ type: 'text', text }], stop_reason: 'end_turn', usage: { input_tokens: 1000, output_tokens: 500 }, ...extra });
+  const json = x => msg('```json\n' + JSON.stringify(x) + '\n```');
   const client = {
     messages: { create: async () => msg(JSON.stringify({ ok: true, reason: 'ok', name: 'URL Shortener', likeWhat: 'like bit.ly', icon: '🔗', slug: 'url shortener!' })) },
-    beta: { messages: { stream: req => ({ finalMessage: async () => (req.tools
-      ? msg('Notes '.repeat(100) + ' https://example.com/a', { content: [{ type: 'web_search_tool_result', content: [{ url: 'https://example.com/a', title: 'A' }] }, { type: 'text', text: 'Notes '.repeat(100) + ' https://example.com/a' }] })
-      : msg('```json\n' + JSON.stringify(replies.design.shift()) + '\n```')) }) } }
+    beta: { messages: { stream: req => ({ finalMessage: async () => {
+      if (req.tools) return msg('', { content: [{ type: 'web_search_tool_result', content: [{ url: 'https://example.com/a', title: 'A' }] }, { type: 'text', text: 'Notes '.repeat(100) + ' https://example.com/a' }] });
+      if (req.system[0].text.includes('OUTLINE')) return json(plans.shift());
+      detailCalls += 1;
+      const n = Number(req.messages[0].content.match(/details for level (\d+)/)[1]);
+      return json(details.find(d => d.level === n));
+    } }) } }
   };
   const stages = [];
   const out = await gen.generateGame({ prompt: 'a url shortener' }, { client, onStage: s => stages.push(s) });
   assert(out.ok, `not ok: ${out.result.problems.join('; ')}`);
   assert(out.rounds === 1 && stages.includes('repair'), 'repair round did not run');
+  assert(detailCalls === 9, `expected 8 + 1 level rewrites, got ${detailCalls}`);
   assert(out.data.id === 'dg_url_shortener', `id ${out.data.id}`);
-  assert(out.data.meta.sources.length && out.usage.calls === 4 && out.usage.dollars > 0, 'sources or usage missing');
+  assert(out.data.meta.sources.length && out.usage.dollars > 0, 'sources or usage missing');
+});
+await test('generator: outline and details split and merge back to the same game', async () => {
+  const { splitPack, mergePack } = await imp('tools/designgame/split.mjs');
+  const { outline, details } = splitPack(usJson);
+  const sorted = x => JSON.stringify(x, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v));
+  assert(sorted(mergePack(outline, details)) === sorted(usJson), 'round trip changed the game');
+  assert(!JSON.stringify(outline).includes('"hint"') && !outline.tutorial, 'outline still has words');
 });
 await test('data pack: rejects unknown machines, fixes, goals and fields', () => {
   const bad = JSON.parse(JSON.stringify(usJson));

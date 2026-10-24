@@ -36,7 +36,8 @@ const STAGE_TEXT = {
   check: () => 'Checking the prompt…',
   research: i => `Researching ${i.name} on the web…`,
   research_done: i => `  ${i.sources.length} sources`,
-  design: () => 'Designing levels…',
+  plan: () => 'Planning the levels (numbers, machines, goals)…',
+  details: i => `Writing stories, hints and tutorials for ${i.levels} levels in parallel…`,
   test: i => (i.round ? `Testing the repaired game (round ${i.round})…` : 'Balancing and test-playing every level…'),
   repair: i => `  ${i.problems.length} problems, asking for a fix:\n${i.problems.map(p => `    - ${p}`).join('\n')}`,
   done: i => (i.ok ? 'Passed.' : 'Still failing after repairs.')
