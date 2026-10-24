@@ -300,6 +300,46 @@ await test('feedback: per-visitor, duplicate and site-wide limits', async () => 
   assert(blocked && /today/.test(blocked), 'site-wide daily cap missing');
 });
 
+// ─── 9. Data packs (generated games) ───
+const dp = await imp('js/products/dataPack.js');
+const usJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/designgame/url-shortener.pack.json'), 'utf8'));
+
+await test('data pack: the URL shortener as JSON is valid', () => {
+  const problems = dp.validateDataPack(usJson);
+  assert(!problems.length, problems.slice(0, 5).join('; '));
+  const pack = dp.compileDataPack(usJson);
+  assert(Object.keys(pack.challenges).length === 8 && pack.steps[7].length > 3, 'levels, goals or steps missing');
+});
+await test('data pack: plays exactly like the hand-made URL shortener', () => {
+  const play = args => JSON.parse(execFileSync(process.execPath, [path.join(ROOT, 'tools/playtest-headless.mjs'), ...args, '--json'], { encoding: 'utf8' }));
+  const a = play(['url_shortener']);
+  const b = play(['--pack', path.join(ROOT, 'tools/designgame/url-shortener.pack.json')]);
+  assert(a.passed && b.passed, 'a play-test failed');
+  const pick = r => [r.level, r.done, r.minutes, r.users, r.coinsEnd, r.apps, r.shards].join(',');
+  assert(a.results.map(pick).join('|') === b.results.map(pick).join('|'), 'data pack plays differently');
+});
+await test('data pack: rejects unknown machines, fixes, goals and fields', () => {
+  const bad = JSON.parse(JSON.stringify(usJson));
+  bad.roles.teleporter = { unlockLevel: 2 };
+  bad.fixes.magic = 3;
+  bad.goals[1].push({ type: 'eval', hint: 'x' });
+  bad.levels[0].onTick = 'alert(1)';
+  bad.tutorial[2][0].highlight = 'body';
+  const p = dp.validateDataPack(bad).join(' | ');
+  for (const w of ['roles.teleporter', 'fixes.magic', 'unknown goal type', 'levels[0].onTick', 'highlight']) assert(p.includes(w), `missed: ${w}`);
+  let threw = false;
+  try { dp.compileDataPack(bad); } catch (e) { threw = e instanceof dp.DataPackError; }
+  assert(threw, 'compile accepted a bad pack');
+});
+await test('data pack: text keeps simple formatting and drops HTML', () => {
+  assert(dp.cleanText('<strong>Bold</strong> and <em>soft</em>') === '<strong>Bold</strong> and <em>soft</em>', 'formatting lost');
+  const evil = dp.cleanText('<img src=x onerror=alert(1)><script>x</script><strong onclick="x">a</strong>');
+  assert(!/</.test(evil.replace(/<\/?(strong|em|code|b|i)>|<br>/g, '')), `unsafe html kept: ${evil}`);
+  const bad = JSON.parse(JSON.stringify(usJson));
+  bad.levels[0].story = 'Hi <script>alert(1)</script>';
+  assert(!dp.compileDataPack(bad).levels[0].story.includes('<script'), 'story not cleaned');
+});
+
 // ─── Report ───
 const failed = results.filter(r => !r.ok);
 for (const r of results) console.log(`${r.ok ? '✓' : '✗'} ${r.name}${r.ok ? '' : `\n    → ${r.err}`}`);

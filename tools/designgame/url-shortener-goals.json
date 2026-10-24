@@ -1,0 +1,70 @@
+{
+  "suggestFix": [
+    { "fix": "index", "roles": ["db", "app"], "parts": ["cpu", "storage"], "minLevel": 2 },
+    { "fix": "base62", "roles": ["db"], "minLevel": 2 },
+    { "fix": "idRanges", "roles": ["idgen"] }
+  ],
+  "goals": {
+    "1": [
+      { "type": "users", "target": 100, "hint": "Users stop growing at your server's limit. Open Server and upgrade the part marked \"runs out first\"." },
+      { "type": "records", "id": "links", "icon": "🔗", "info": "storage", "target": 300, "label": "Store 300 short links", "hint": "Users create links over time (about 1 per 100 user-seconds). More users = more links." },
+      { "type": "latency", "ms": 60, "users": 100, "hint": "Latency climbs once any part is over ~70% busy. Upgrade so 100 users use less than 80% of every part." },
+      { "type": "incident", "kind": "spike", "hint": "About 130 people use your shortener, and a spike adds 20–40% more clicks for 20 seconds. Build room for ~180 users: in Server, \"Can handle\" should say 180+." },
+      { "type": "profit", "target": 1000, "hint": "Profit = revenue − server running cost − outage penalties. Failed redirects earn nothing, so fix overloads fast. Bigger parts cost more every minute." }
+    ],
+    "2": [
+      { "type": "placed", "role": "db", "icon": "🗄️", "label": "Move the links to their own database server", "hint": "Open Server → Database tab, buy a database server and place it next to your app server." },
+      { "type": "fixOwned", "fix": "base62", "icon": "🔤", "info": "base62", "label": "Make short codes from unique IDs (Base62)", "hint": "Right now each new code is a hash of the long URL, so the app must ask the database \"is this code taken?\" before saving. Server → Code fixes → Base62 makes the code from the row's ID: unique by design, no check needed." },
+      { "type": "users", "target": 400, "hint": "Two machines now: check which one (App or DB) \"runs out first\" in the Server Builder." },
+      { "type": "records", "id": "links", "icon": "🔗", "info": "diskSpace", "target": 3000, "label": "Store 3,000 short links", "hint": "Links pile up fast now. When the disk is full every new link fails. SSDs are fast but small; NVMe holds more; HDDs are big but slow." },
+      { "type": "latency", "ms": 80, "users": 400, "hint": "Without an index the database reads every row to find one code, and that gets slower with every link. Buy the Primary-key index (Server → Code fixes) and keep every part under ~75%." },
+      { "type": "profit", "target": 1500, "hint": "Two servers means two running bills. Code fixes are a one-time cost and make every request cheaper." }
+    ],
+    "3": [
+      { "type": "placed", "role": "gateway", "icon": "🚦", "label": "Put an API gateway in front of your API", "hint": "Open Server → Gateway tab and place it. Every API call passes through it, and rate limiting rejects clients that create too many links." },
+      { "type": "counter", "id": "spam-blocked", "stat": "botsBlocked", "icon": "🛑", "info": "rateLimiting", "target": 20000, "unit": "blocked", "label": "Block 20,000 spam requests", "hint": "Once the gateway is in place it rejects ~95% of spam calls with \"429 Too Many Requests\". The counter goes up by itself." },
+      { "type": "users", "target": 600, "hint": "Spam eats database writes and disk space that real users need. Block it first, then grow." },
+      { "type": "errorRate", "max": 0.01, "users": 600, "label": "Under 1% failed requests with 600+ users", "hint": "If errors stay high, check the disk (spam fills it) and which machine runs out first." },
+      { "type": "incident", "kind": "bots", "label": "Survive a spam attack (under 5% failed requests)", "hint": "During an attack spam traffic triples or quadruples. With a rate-limiting gateway it barely matters; without one, your database drowns in writes." },
+      { "type": "profit", "target": 2000, "hint": "Spam never pays. Every spam link that reaches your database costs a write and disk space." }
+    ],
+    "4": [
+      { "type": "placed", "role": "lb", "icon": "⚖️", "label": "Add a load balancer", "hint": "Open Server → LB tab and place it. Then the App tab lets you add more app servers behind it." },
+      { "type": "machines", "id": "three-apps", "role": "app", "target": 3, "label": "Run 3 app servers", "hint": "Server → App tab → \"Add app server\". Redirects carry no session, so any server can answer any click. With 3, one can crash and two cope." },
+      { "type": "users", "target": 1500, "hint": "Add app servers instead of buying bigger ones. The database may need its XL parts." },
+      { "type": "incident", "kind": "crash", "hint": "When one app server dies, the load balancer sends its users to the others. They need enough spare room to take the extra load." },
+      { "type": "profit", "target": 5000, "hint": "More servers means more running cost. Medium servers in a group are often cheaper than maxed-out ones." }
+    ],
+    "5": [
+      { "type": "placed", "role": "cache", "icon": "⚡", "label": "Put a cache in front of the database", "hint": "Open Server → Cache tab and place it. Redirects check the cache first; only misses reach the database." },
+      { "type": "statAtLeast", "id": "hit-rate", "stat": "cacheHit", "min": 0.9, "icon": "🎯", "info": "cache", "label": "Cache hit rate 90% or more", "displayLabel": "Hit rate", "hint": "A few viral links get most clicks, so a cache that holds just the hot links answers almost every redirect." },
+      { "type": "users", "target": 2500, "hint": "App servers scale out, but there is one database. Let the cache take the clicks." },
+      { "type": "cpuUnder", "id": "db-cpu", "role": "db", "max": 0.5, "users": 2500, "label": "Database CPU under 50% with 2,500+ users", "hint": "With a 90%+ hit rate the database only sees 1 click in 10, plus new links." },
+      { "type": "latency", "ms": 45, "users": 2500, "hint": "Answers from memory are fast. Keep every machine under ~70% busy." },
+      { "type": "profit", "target": 8000, "hint": "A cache is cheap compared to a bigger database. Spend where it helps the most." }
+    ],
+    "6": [
+      { "type": "placed", "role": "queue", "icon": "📨", "label": "Send click events through a message queue", "hint": "Open Server → Queue tab and place it. Redirects drop an event in the queue and answer at once; a worker counts clicks in batches." },
+      { "type": "counter", "id": "clicks", "stat": "clicksCounted", "icon": "📊", "info": "clickAnalytics", "target": 50000, "unit": "clicks", "label": "Count 50,000 clicks", "hint": "Clicks are counted as long as redirects succeed. Failed redirects are clicks you never see." },
+      { "type": "users", "target": 3000, "hint": "Counting each click inline is a database write per redirect. The queue turns 50 clicks into one write." },
+      { "type": "latency", "ms": 45, "users": 3000, "hint": "An inline click write makes every redirect wait for the database. Through the queue, redirects return straight away." },
+      { "type": "incident", "kind": "spike", "hint": "Spikes push 1.5–2× the traffic for 20 seconds. Keep headroom on every machine." },
+      { "type": "profit", "target": 12000, "hint": "Customers pay for analytics, but only if counting clicks doesn't cost more than it earns." }
+    ],
+    "7": [
+      { "type": "machines", "id": "shards", "role": "db", "target": 3, "icon": "🧱", "info": "sharding", "label": "Split the links across 3 database shards", "hint": "Server → Database tab → \"Add shard\". Each shard holds a slice of the links (by short code), so you get 3 disks and 3 CPUs." },
+      { "type": "placed", "role": "idgen", "icon": "🔢", "label": "Add a global ID generator", "hint": "Each shard counts its own IDs, so two shards can hand out the same code. Open Server → IDs tab: one counter for everyone." },
+      { "type": "counter", "id": "clean-links", "stat": "cleanLinks", "icon": "🧬", "info": "idGenerator", "target": 10000, "unit": "links", "label": "Create 10,000 links on 2+ shards with no clashing codes", "hint": "Counts new links only while you run 2+ shards and no two can get the same code: that needs the ID generator (or hashing with a check on every shard, which is slow)." },
+      { "type": "users", "target": 3500, "hint": "New links pour in. Watch the disk: shards add space, and \"Expire old links\" keeps tables from growing forever." },
+      { "type": "profit", "target": 15000, "hint": "Every shard is another running bill. Expiring old links can save you a shard." }
+    ],
+    "8": [
+      { "type": "placed", "role": "cdn", "icon": "🌍", "label": "Redirect at the edge with a CDN", "hint": "Open Server → CDN tab and place it. Popular redirects are answered in a city near each user." },
+      { "type": "users", "target": 5000, "hint": "With the edge answering most clicks, your origin sees far less. Check what still runs out first." },
+      { "type": "latency", "ms": 80, "users": 5000, "hint": "60% of clicks come from far away and pay ~120 ms. Only answering at the edge brings that down." },
+      { "type": "statAtLeast", "id": "accuracy", "stat": "clickAccuracy", "min": 0.95, "users": 5000, "icon": "📊", "info": "redirect301", "label": "Click counts 95%+ accurate with 5,000+ users", "displayLabel": "Clicks counted:", "hint": "A 301 lets browsers skip you on repeat clicks: less load, but those clicks are never counted. Keep 302 (Code fixes) and keep failures low." },
+      { "type": "incident", "kind": "spike", "hint": "Spikes push 1.5–2× the traffic for 20 seconds. Keep headroom on every machine." },
+      { "type": "profit", "target": 12000, "hint": "The edge answers most clicks, so origin servers can be smaller. Fewer, smaller machines = lower running cost." }
+    ]
+  }
+}

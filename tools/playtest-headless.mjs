@@ -3,6 +3,7 @@
  * playtest-headless.mjs — play every level of a product in Node, no browser.
  *
  *   node tools/playtest-headless.mjs news_feed [--json] [--seed 7]
+ *   node tools/playtest-headless.mjs --pack game.json   (a data pack, see js/products/dataPack.js)
  *
  * Runs the real game systems (GameState, ResourceManager, LevelSystem,
  * TrafficSpikes, EventSystem, Challenges) with the same bot as
@@ -21,7 +22,6 @@
  */
 
 const args = process.argv.slice(2);
-const productId = args.find(a => !a.startsWith('--')) || 'guestbook';
 const asJson = args.includes('--json');
 const seedArg = args.indexOf('--seed');
 let seed = seedArg >= 0 ? Number(args[seedArg + 1]) : 7;
@@ -34,6 +34,8 @@ Math.random = () => {
 
 const root = new URL('../js/', import.meta.url).href;
 const registry = await import(root + 'products/registry.js');
+const { productFromArgs } = await import('./designgame/pack-arg.mjs');
+const productId = await productFromArgs(args);
 if (!registry.hasPack(productId)) {
   console.error(`Unknown product "${productId}". Known: ${Object.keys(registry.PACKS).join(', ')}`);
   process.exit(2);

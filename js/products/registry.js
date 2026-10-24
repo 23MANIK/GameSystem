@@ -54,6 +54,13 @@ export function activeProduct() {
   return active;
 }
 
+/** Add a pack at run time (a generated game loaded from JSON, see dataPack.js). */
+export function registerPack(pack) {
+  PACKS[pack.id] = pack;
+  registerSteps(pack.steps);
+  return pack;
+}
+
 export function hasPack(id) {
   return Boolean(PACKS[id]);
 }

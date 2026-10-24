@@ -4,6 +4,7 @@
  * actually needs what it teaches.
  *
  *   node tools/balance-levels.mjs url_shortener
+ *   node tools/balance-levels.mjs --pack game.json   (a data pack)
  *
  * For each level it builds the cheapest system that fits the level's audience
  * (or 15% over the user target), first WITH the level's new machine and
@@ -16,9 +17,9 @@
  */
 
 const root = new URL('../js/', import.meta.url).href;
-const productId = process.argv[2] || 'guestbook';
-
 const registry = await import(root + 'products/registry.js');
+const { productFromArgs } = await import('./designgame/pack-arg.mjs');
+const productId = await productFromArgs(process.argv.slice(2));
 if (!registry.hasPack(productId)) {
   console.error(`Unknown product "${productId}". Known: ${Object.keys(registry.PACKS).join(', ')}`);
   process.exit(1);

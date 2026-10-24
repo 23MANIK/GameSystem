@@ -3,6 +3,7 @@
  * check-pack.mjs — the "done" gate for a generated product pack.
  *
  *   node tools/check-pack.mjs news_feed [--write]
+ *   node tools/check-pack.mjs --pack game.json   (a data pack)
  *
  * Runs the balance tool and the headless play-test, then checks:
  *   - every level's best system fits its user target (warning if no headroom)
@@ -19,13 +20,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const id = process.argv[2];
-const write = process.argv.includes('--write');
-if (!id) { console.error('usage: node tools/check-pack.mjs <product_id> [--write]'); process.exit(2); }
+const argv = process.argv.slice(2);
+const packFile = argv.includes('--pack') ? argv[argv.indexOf('--pack') + 1] : null;
+const id = packFile ? path.basename(packFile).replace(/\.(pack\.)?json$/, '') : argv.find(a => !a.startsWith('--'));
+const target = packFile ? ['--pack', path.resolve(packFile)] : [id];
+const write = argv.includes('--write');
+if (!id) { console.error('usage: node tools/check-pack.mjs <product_id> [--write]  |  --pack game.json'); process.exit(2); }
 
 function run(script, ...a) {
   try {
-    return { out: execFileSync(process.execPath, [path.join(ROOT, 'tools', script), id, ...a], { encoding: 'utf8' }), code: 0 };
+    return { out: execFileSync(process.execPath, [path.join(ROOT, 'tools', script), ...target, ...a], { encoding: 'utf8' }), code: 0 };
   } catch (e) {
     return { out: (e.stdout || '') + (e.stderr || ''), code: e.status ?? 1 };
   }
