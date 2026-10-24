@@ -1,0 +1,12 @@
+{
+  "name": "scale-architect",
+  "private": true,
+  "type": "module",
+  "description": "Scale Architect: a strategy game about system design. The game itself has no build step; these packages are for the DesignGame generator (tools/designgame, deploy/api).",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0"
+  }
+}

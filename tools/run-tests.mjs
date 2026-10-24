@@ -326,6 +326,26 @@ await test('data pack: the in-process gate (balance + play-test) passes it', asy
   assert(r.passed, r.errors.join('; '));
   assert(r.play.results.length === 8 && r.balance.length === 8, 'missing levels in the report');
 });
+await test('generator: the whole pipeline runs with a stand-in model, and repairs a broken design', async () => {
+  const gen = await imp('tools/designgame/generate.mjs');
+  const good = JSON.parse(JSON.stringify(usJson));
+  const broken = JSON.parse(JSON.stringify(usJson));
+  broken.goals[2][0] = { type: 'teleport', hint: 'x' };
+  const replies = { design: [broken, good] };
+  const msg = (text, extra = {}) => ({ content: [{ type: 'text', text }], stop_reason: 'end_turn', usage: { input_tokens: 1000, output_tokens: 500 }, ...extra });
+  const client = {
+    messages: { create: async () => msg(JSON.stringify({ ok: true, reason: 'ok', name: 'URL Shortener', likeWhat: 'like bit.ly', icon: '🔗', slug: 'url shortener!' })) },
+    beta: { messages: { stream: req => ({ finalMessage: async () => (req.tools
+      ? msg('Notes '.repeat(100) + ' https://example.com/a', { content: [{ type: 'web_search_tool_result', content: [{ url: 'https://example.com/a', title: 'A' }] }, { type: 'text', text: 'Notes '.repeat(100) + ' https://example.com/a' }] })
+      : msg('```json\n' + JSON.stringify(replies.design.shift()) + '\n```')) }) } }
+  };
+  const stages = [];
+  const out = await gen.generateGame({ prompt: 'a url shortener' }, { client, onStage: s => stages.push(s) });
+  assert(out.ok, `not ok: ${out.result.problems.join('; ')}`);
+  assert(out.rounds === 1 && stages.includes('repair'), 'repair round did not run');
+  assert(out.data.id === 'dg_url_shortener', `id ${out.data.id}`);
+  assert(out.data.meta.sources.length && out.usage.calls === 4 && out.usage.dollars > 0, 'sources or usage missing');
+});
 await test('data pack: rejects unknown machines, fixes, goals and fields', () => {
   const bad = JSON.parse(JSON.stringify(usJson));
   bad.roles.teleporter = { unlockLevel: 2 };

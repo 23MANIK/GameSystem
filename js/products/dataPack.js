@@ -52,6 +52,9 @@ const ENDPOINT_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'PAGE', 'BOT'
 const ENDPOINT_RATES = ['readsPerSec', 'writesPerSec', 'botsPerSec', 'clicksPerSec', 'pagesPerSec'];
 
 const INCIDENT_KINDS = ['spike', 'bots', 'crash'];
+// Counters in gs.liveStats and shares in gs.serverStatus that goals can watch
+export const COUNTER_STATS = ['botsBlocked', 'clicksCounted', 'cleanLinks', 'safeEdits', 'uploadsOk', 'verifiedFiles', 'feedWrites', 'fanoutClearSec'];
+export const SHARE_STATS = ['cacheHit', 'clickAccuracy'];
 const PARTS = Object.keys(SERVER_PARTS);
 const TEXT_MAX = 1200;
 
@@ -211,13 +214,13 @@ function checkGoal(c, where, g, roles) {
     case 'fixOwned':
       c.oneOf(`${where}.fix`, g.fix, Object.keys(CODE_FIXES)); break;
     case 'counter':
-      c.str(`${where}.stat`, g.stat, { max: 40 }); c.str(`${where}.label`, g.label, { max: 160 }); c.num(`${where}.target`, g.target, { min: 1 }); break;
+      c.oneOf(`${where}.stat`, g.stat, COUNTER_STATS); c.str(`${where}.label`, g.label, { max: 160 }); c.num(`${where}.target`, g.target, { min: 1 }); break;
     case 'machines':
       c.oneOf(`${where}.role`, g.role, ['app', 'db']); c.num(`${where}.target`, g.target, { min: 2, max: 8, int: true }); break;
     case 'errorRate':
       c.num(`${where}.max`, g.max, { min: 0.001, max: 0.5 }); c.num(`${where}.users`, g.users, { min: 1, int: true }); break;
     case 'statAtLeast':
-      c.str(`${where}.stat`, g.stat, { max: 40 }); c.str(`${where}.label`, g.label, { max: 160 }); c.num(`${where}.min`, g.min, { min: 0, max: 1 });
+      c.oneOf(`${where}.stat`, g.stat, SHARE_STATS); c.str(`${where}.label`, g.label, { max: 160 }); c.num(`${where}.min`, g.min, { min: 0, max: 1 });
       if (g.users != null) c.num(`${where}.users`, g.users, { min: 1, int: true });
       break;
     case 'cpuUnder':
