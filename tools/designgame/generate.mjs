@@ -244,6 +244,10 @@ function engineReference() {
     + `## Stats goals can watch\n- counter goals (gs.liveStats): ${COUNTER_STATS.join(', ')}\n- statAtLeast goals (gs.serverStatus, 0–1): ${SHARE_STATS.join(', ')}\n`;
 }
 
+// Read once at load, before any generated game is switched on: playing a pack
+// (the test step) replaces machine and fix wording with that game's own words
+const ENGINE_REFERENCE = engineReference();
+
 const example = () => splitPack(JSON.parse(read('tools/designgame/url-shortener.pack.json')));
 
 const GAME_INTRO = 'Scale Architect is a browser game that teaches system design. The player grows one product from a single server to a large system. Each level is one real problem the player feels (things get slow, a disk fills up, bots attack, a server crashes) and one new piece that solves it.';
@@ -277,7 +281,7 @@ ${read('docs/designgame/data-pack-format.md')}
 ${readEngineNotes().split('## Code fixes')[0]}
 
 # The game's machines, code fixes and stats
-${engineReference()}
+${ENGINE_REFERENCE}
 
 # Example: the URL Shortener's outline
 \`\`\`json

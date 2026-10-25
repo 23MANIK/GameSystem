@@ -17,6 +17,7 @@
  */
 
 import { ROLES, CLOUD_EQUIVALENTS } from '../data/roles.js';
+import { vocab } from '../products/registry.js';
 import { getOption, PART_ORDER, SERVER_PARTS, runningCostPerMinute } from '../data/serverParts.js';
 import { infoButton } from '../ui/InfoTips.js';
 
@@ -459,7 +460,8 @@ export default class SystemDiagram {
   buildLegend(p) {
     const gs = this.gameState;
     const L = gs.levelDef();
-    const items = [['read', L.readKind === 'lookup' ? 'redirect' : 'read'], ['write', L.readKind === 'lookup' ? 'new link' : 'write']];
+    const lookup = L.readKind === 'lookup';
+    const items = [['read', lookup ? vocab('readName') : 'read'], ['write', lookup ? `new ${vocab('record')}` : 'write']];
     if (p.web || L.pageViewsPerUser) items.push(['page', 'page']);
     if (L.botShare || L.spamPerUser) items.push(['bot', L.botKind === 'write' ? 'spam' : 'bot']);
     if (p.queue || L.clickTracking || p.sync) items.push(['event', p.sync ? 'event / push' : 'click event']);

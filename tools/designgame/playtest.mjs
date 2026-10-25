@@ -31,20 +31,21 @@ import * as SP from '../../js/data/serverParts.js';
 import * as CF from '../../js/data/codeFixes.js';
 
 /** Play a product start to finish. Returns { productId, passed, results: [per level] }. */
-export function playtest(productId, { seed = 7 } = {}) {
+/** onLevel(gs, 'start' | 'end') lets a caller look at (or save) the game as each level starts and ends. */
+export function playtest(productId, { seed = 7, onLevel } = {}) {
   const realRandom = Math.random;
   Math.random = () => {
     seed = (seed * 1664525 + 1013904223) % 4294967296;
     return seed / 4294967296;
   };
   try {
-    return run(productId);
+    return run(productId, onLevel);
   } finally {
     Math.random = realRandom;
   }
 }
 
-function run(productId) {
+function run(productId, onLevel = () => {}) {
   const TICK = 2; // seconds, as in the game
   const MAX_MINUTES = 60;
   const MIN_OK = 2, MAX_OK = 20; // a healthy level takes this many simulated minutes
@@ -198,10 +199,14 @@ function run(productId) {
   }
 
 
+  onLevel(gs, 'start');
   const results = [runLevel()];
+  onLevel(gs, 'end');
   while (gs.levelCompleted && LEVELS[gs.level] && !LEVELS[gs.level].comingSoon) {
     gs.startLevel(gs.level + 1);
+    onLevel(gs, 'start');
     results.push(runLevel());
+    onLevel(gs, 'end');
   }
   const passed = results.length === LEVELS.filter(l => !l.comingSoon).length && results.every(r => r.done);
 

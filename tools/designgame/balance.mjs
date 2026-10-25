@@ -94,7 +94,9 @@ function best(L, roles, base) {
     for (let d = 1; d <= dbMax; d++) {
       const res = solve(L, roles, { ...base, appCount: a, dbCount: d });
       const c = cost(res.m, a, d);
-      const score = (res.ok ? 0 : 1e9) + c.run;
+      // Cheapest that works; if none works, the one that gets closest (so the
+      // report names the real limit, not the cheapest broken setup)
+      const score = res.ok ? c.run : 1e12 - Math.min(res.s.userLimit, 1e8) * 1e3 + c.run;
       if (!pick || score < pick.score) pick = { ...res, ...c, apps: a, shards: d, score };
     }
   }
