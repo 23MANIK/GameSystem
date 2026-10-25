@@ -6,12 +6,14 @@ Players name a system ("Ride hailing like Uber"). Claude researches how it is re
 
 | Step | Who | Where |
 |---|---|---|
-| Check the idea | Claude Haiku 5.5 | `checkPrompt` in `tools/designgame/generate.mjs` |
-| Research on the web | Claude Opus 5.5 + web search / fetch | `research` |
+| Check the idea, pick matching design notes | Claude Haiku 5.5 | `checkPrompt` in `tools/designgame/generate.mjs` |
+| Research: the notes first, the web for gaps | Claude Opus 5.5 + web search / fetch | `research` |
 | Plan the levels (numbers, machines, goals) | Claude Opus 5.5 | `plan` |
 | Stories, hints, tutorials, one call per level in parallel | Claude Opus 5.5 | `writeDetails` |
 | Re-tune money, balance check, test-play every level | our code | `gateAndTune` → `tools/designgame/checkGame.mjs` |
 | Fix what failed (up to 2 rounds) | Claude Opus 5.5 | `repairOutline` |
+
+**Design notes library** (`tools/designgame/library/`, loader `tools/designgame/library.mjs`): Nikhil's study notes on the 32 Hello Interview breakdowns plus 5 deep dives. The check picks up to 2 that match the prompt. Research builds on them and only searches the web for gaps (at most 4 searches instead of 10), and planning and level writing get them too. No match means web research as before. Add a note by dropping a `.md` file in the folder with a `# Title` line and optional `**Patterns:**` and `**Source:**` lines.
 
 A game is a **data pack**: plain JSON, no code (`docs/designgame/data-pack-format.md`, loader `js/products/dataPack.js`). It can only use machines, code fixes and traffic params the engine already has.
 

@@ -27,6 +27,7 @@ import { ROLES } from '../../js/data/roles.js';
 import { CODE_FIXES } from '../../js/data/codeFixes.js';
 import { checkGame } from './checkGame.mjs';
 import { splitPack, mergePack } from './split.mjs';
+import { loadLibrary, libraryMenu, pickNotes } from './library.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -117,14 +118,27 @@ const CHECK_SCHEMA = {
     name: { type: 'string' },
     likeWhat: { type: 'string' },
     icon: { type: 'string' },
-    slug: { type: 'string' }
+    slug: { type: 'string' },
+    notes: { type: 'array', items: { type: 'string' } }
   },
-  required: ['ok', 'reason', 'name', 'likeWhat', 'icon', 'slug'],
+  required: ['ok', 'reason', 'name', 'likeWhat', 'icon', 'slug', 'notes'],
   additionalProperties: false
 };
 
-/** Is this a software system someone could design? Returns { ok, reason, name, likeWhat, icon, id }. */
+let libraryCache = null;
+/** The design notes library (loaded once). Tests can pass their own. */
+export function library(set) {
+  if (set !== undefined) libraryCache = set;
+  if (!libraryCache) libraryCache = loadLibrary();
+  return libraryCache;
+}
+
+/** Is this a software system someone could design? Returns { ok, reason, name, likeWhat, icon, id, notes }. */
 export async function checkPrompt(client, input, usage = newUsage()) {
+  const lib = library();
+  const menu = lib.length
+    ? ' notes: the ids of up to 2 notes from the list below that cover this system or its hardest problem (the closest breakdown first, then a deep dive if one fits), or [] if none is close.\n\nNotes:\n' + libraryMenu(lib)
+    : ' notes: [].';
   const message = await client.messages.create({
     model: MODELS.check,
     max_tokens: 2000,
@@ -133,14 +147,14 @@ export async function checkPrompt(client, input, usage = newUsage()) {
       + 'Accept any real software product or backend system someone could design at scale (a URL shortener, chat app, ride hailing, payments, a search engine, a rate limiter...). '
       + 'Reject anything that is not a software system to design, is harmful, or asks you to do something else. '
       + 'name: a short product name in Title Case (e.g. "Ride Hailing"). likeWhat: "like <well-known example>" (e.g. "like Uber"). '
-      + 'icon: one emoji. slug: lowercase words joined by _ (e.g. ride_hailing). reason: one short sentence.',
+      + 'icon: one emoji. slug: lowercase words joined by _ (e.g. ride_hailing). reason: one short sentence.' + menu,
     messages: [{ role: 'user', content: `<request>${String(input.prompt).slice(0, 600)}</request>` }]
   });
   addUsage(usage, MODELS.check, message.usage);
   checkStop(message, 'prompt check');
   const out = JSON.parse(textOf(message));
   const slug = String(out.slug || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'game';
-  return { ...out, id: `dg_${slug}` };
+  return { ...out, notes: pickNotes(lib, out.notes).map(n => n.id), id: `dg_${slug}` };
 }
 
 // ─── 2. Research ───
@@ -161,7 +175,9 @@ Keep it under about 1,500 words.`;
 
 /** Research the system on the web. Returns { notes, sources: [{ title, url }] }. */
 export async function research(client, input, check, usage = newUsage()) {
+  const notes = pickNotes(library(), check.notes);
   const ask = [
+    notes.length ? `Main source: these study notes (summaries of Hello Interview breakdowns). Build your findings on them and keep their design choices; use the web only to fill gaps (real numbers, anything the notes skip) and to check anything that looks out of date.\n\n${libraryBlock(notes)}` : '',
     `Product: ${check.name} (${check.likeWhat}).`,
     `The player's request: <request>${String(input.prompt).slice(0, 600)}</request>`,
     input.focus?.length ? `Pay extra attention to: ${input.focus.join(', ')}.` : '',
@@ -180,8 +196,9 @@ export async function research(client, input, check, usage = newUsage()) {
       output_config: { effort: 'medium' },
       system: RESEARCH_SYSTEM,
       tools: [
-        { type: 'web_search_20260209', name: 'web_search', max_uses: 10 },
-        { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 8, max_content_tokens: 30000 }
+        // With notes the web only fills gaps, so fewer searches
+        { type: 'web_search_20260209', name: 'web_search', max_uses: notes.length ? 4 : 10 },
+        { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: notes.length ? 3 : 8, max_content_tokens: 30000 }
       ],
       messages
     }).finalMessage();
@@ -198,17 +215,23 @@ export async function research(client, input, check, usage = newUsage()) {
       for (const r of b.content) if (r.url) sources.push({ title: r.title || r.url, url: r.url });
     }
   }
-  const notes = textOf(message).trim();
-  if (notes.length < 400) throw new GenerateError('The research came back nearly empty.', 'thin_research');
-  return { notes, sources: dedupeSources(sources, notes) };
+  const text = textOf(message).trim();
+  if (text.length < 400) throw new GenerateError('The research came back nearly empty.', 'thin_research');
+  const fromLibrary = notes.filter(n => n.source).map(n => ({ title: `Hello Interview: ${n.title}`, url: n.source }));
+  return { notes: text, sources: dedupeSources([...fromLibrary, ...sources], text, fromLibrary.length), library: notes.map(n => n.id) };
+}
+
+/** Notes as a block for a prompt. */
+function libraryBlock(notes) {
+  return notes.map(n => `<note id="${n.id}" title="${n.title}">\n${n.text}\n</note>`).join('\n\n');
 }
 
 /** Keep the sources the notes actually cite, else the first few found. */
-function dedupeSources(found, notes) {
+function dedupeSources(found, notes, keep = 0) {
   const seen = new Set();
   const all = found.filter(s => !seen.has(s.url) && seen.add(s.url));
-  const cited = all.filter(s => notes.includes(s.url));
-  return (cited.length ? cited : all).slice(0, 10);
+  const cited = all.filter((s, i) => i < keep || notes.includes(s.url));
+  return (cited.length > keep ? cited : all).slice(0, 10);
 }
 
 // ─── 3. Design: an outline, then every level's details in parallel ───
@@ -327,7 +350,10 @@ function briefing(input, check, researchOut) {
       ? 'The players are preparing for system design interviews: use the real terms and the trade-offs interviewers ask about; keep the tutorial short.'
       : 'The players are beginners: explain each idea simply.',
     `The player's request: <request>${String(input.prompt).slice(0, 600)}</request>`,
-    `Research:\n<research>\n${researchOut.notes}\n</research>`
+    `Research:\n<research>\n${researchOut.notes}\n</research>`,
+    researchOut.library?.length
+      ? `Main reference (the design notes the research is built on; follow their design choices and order of growth where the game allows):\n${libraryBlock(pickNotes(library(), researchOut.library))}`
+      : ''
   ].filter(Boolean).join('\n\n');
 }
 

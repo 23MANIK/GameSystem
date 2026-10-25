@@ -355,6 +355,44 @@ await test('generator: the whole pipeline runs with a stand-in model, and repair
   assert(out.data.id === 'dg_url_shortener', `id ${out.data.id}`);
   assert(out.data.meta.sources.length && out.usage.dollars > 0, 'sources or usage missing');
 });
+await test('generator: design notes library is the main research source', async () => {
+  const os = await import('node:os');
+  const fsm = await import('node:fs');
+  const pathm = await import('node:path');
+  const lib = await imp('tools/designgame/library.mjs');
+  const gen = await imp('tools/designgame/generate.mjs');
+  const dir = fsm.mkdtempSync(pathm.join(os.tmpdir(), 'dg-lib-'));
+  fsm.mkdirSync(pathm.join(dir, 'advanced'));
+  fsm.writeFileSync(pathm.join(dir, '00-index.md'), '# Index\n');
+  fsm.writeFileSync(pathm.join(dir, '01-shortener.md'), '# 01 · Link Shortener: Study Notes\n\n**Difficulty:** Easy · **Patterns:** Scaling Reads · **Source:** https://notes.example/shortener\n\nUse a counter and base62. ' + 'x'.repeat(20000));
+  fsm.writeFileSync(pathm.join(dir, 'advanced', 'A1-geo.md'), '# A1 · Geo Search: Study Notes (Advanced Topic)\n\n**Source:** https://notes.example/geo\n');
+  const notes = lib.loadLibrary(dir);
+  assert(notes.length === 2, `index should be skipped, got ${notes.map(n => n.id)}`);
+  const short = notes.find(n => n.id === '01_shortener');
+  assert(short && short.title === 'Link Shortener' && short.patterns === 'Scaling Reads' && short.source === 'https://notes.example/shortener', JSON.stringify(short && { ...short, text: undefined }));
+  assert(short.text.length < 15000, 'long notes are not cut');
+  assert(lib.pickNotes(notes, ['nope', '01_shortener', '01_shortener', 'a1_geo', 'x']).length === 2, 'pickNotes should drop unknown and repeated ids');
+  assert(lib.loadLibrary(pathm.join(dir, 'missing')).length === 0, 'missing folder should mean no library');
+
+  gen.library(notes);
+  try {
+    const seen = {};
+    const msg = (text, extra = {}) => ({ content: [{ type: 'text', text }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 5 }, ...extra });
+    const client = {
+      messages: { create: async req => { seen.check = req.system; return msg(JSON.stringify({ ok: true, reason: 'ok', name: 'Link Shortener', likeWhat: 'like bit.ly', icon: '🔗', slug: 'link', notes: ['01_shortener', 'made_up'] })); } },
+      beta: { messages: { stream: req => ({ finalMessage: async () => { seen.research = req; return msg('Findings '.repeat(80)); } }) } }
+    };
+    const check = await gen.checkPrompt(client, { prompt: 'a link shortener' });
+    assert(seen.check.includes('01_shortener: Link Shortener (Scaling Reads)'), 'check prompt lacks the notes menu');
+    assert(JSON.stringify(check.notes) === '["01_shortener"]', `picked ${check.notes}`);
+    const out = await gen.research(client, { prompt: 'a link shortener' }, check);
+    assert(seen.research.messages[0].content.includes('Use a counter and base62'), 'research did not get the note');
+    assert(seen.research.tools[0].max_uses === 4, 'web search not reduced when notes exist');
+    assert(out.sources[0].url === 'https://notes.example/shortener' && out.library[0] === '01_shortener', JSON.stringify(out.sources));
+  } finally {
+    gen.library([]);
+  }
+});
 await test('generator: outline and details split and merge back to the same game', async () => {
   const { splitPack, mergePack } = await imp('tools/designgame/split.mjs');
   const { outline, details } = splitPack(usJson);
