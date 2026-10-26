@@ -75,8 +75,15 @@ export default class BuildingGallery {
     return Number.isFinite(min) ? min : null;
   }
 
+  /** The gallery's buildings; AI machines only appear in products that use them. */
+  items() {
+    return BUILDINGS.map(b => ({ b, i: this.info(b) }))
+      .filter(({ b, i }) => !(b.onlyWhenUsed && i.status === 'absent'))
+      .map(({ i }) => i);
+  }
+
   render() {
-    const items = BUILDINGS.map(b => this.info(b));
+    const items = this.items();
     this.signature = this.makeSignature(items);
     const sel = this.selected && items.find(i => i.type === this.selected);
     this.container.innerHTML = sel ? this.renderDetail(sel) : this.renderGrid(items);
@@ -85,7 +92,7 @@ export default class BuildingGallery {
 
   /** Re-render only when something visible changed (called every game tick). */
   update() {
-    const sig = this.makeSignature(BUILDINGS.map(b => this.info(b)));
+    const sig = this.makeSignature(this.items());
     if (sig !== this.signature) this.render();
   }
 

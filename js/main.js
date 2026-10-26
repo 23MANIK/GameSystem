@@ -11,7 +11,7 @@ import EventSystem from './game/EventSystem.js';
 import ResourceManager from './game/ResourceManager.js';
 import Tutorial from './game/Tutorial.js';
 import TrafficSpikes from './game/TrafficSpikes.js';
-import { ROLES, ROLE_TILES } from './data/roles.js';
+import { ROLES, ROLE_TILES, partView } from './data/roles.js';
 import { LEVELS } from './data/levels.js';
 
 import SystemDiagram from './rendering/SystemDiagram.js';
@@ -907,7 +907,7 @@ class ScaleArchitect {
           gs.emit('partWarning', { role, partId, usage });
           // When the guide is waiting for this warning, it explains it instead
           if (!(this.tutorial.active && [].concat(this.tutorial.step?.advanceOn || []).includes('partWarning'))) {
-            const part = SERVER_PARTS[partId];
+            const part = partView(role, SERVER_PARTS[partId]);
             const who = several ? `${ROLES[role].icon} ${ROLES[role].name}: ` : '';
             this.notifications.show(`⚠️ ${who}${part.short} is at ${Math.round(usage * 100)}%. Fix it before it runs out.`, 'warning', 5000);
           }
@@ -933,7 +933,7 @@ class ScaleArchitect {
 
     if (status.peak > 1 && !this.overloadWarned) {
       this.overloadWarned = true;
-      const part = SERVER_PARTS[status.busiest];
+      const part = partView(status.busiestRole, SERVER_PARTS[status.busiest]);
       const who = several ? `${ROLES[status.busiestRole].name}'s ` : '';
       this.notifications.show(`🔥 Overloaded! ${who}${part.short} is past 100%. Requests are failing and users are leaving.`, 'error', 5000);
     } else if (status.peak <= 0.95) {

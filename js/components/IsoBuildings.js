@@ -541,6 +541,159 @@ function isoBuild(type, level, state, fit) {
     topFx(0, 0, oz + 0.4);
   };
 
+  // ---------- AI agent buildings ----------
+  // AI model: a domed data hall with a glowing "brain" core and GPU racks
+  T.brain = function () {
+    var R = [1.2, 1.5, 1.8, 2.1][L - 1], H = [1.2, 1.5, 1.8, 2.1][L - 1];
+    var ok = st !== 'failed';
+    var core = ok ? (st === 'heavy' ? '#ff8a3d' : '#c084fc') : '#3a3f4b';
+    baseFx(R * 1.5);
+    prism(0, 0, 0, R + 0.6, 0.35, 8, '#4a5468', Math.PI / 8);
+    // GPU racks behind (one more per level)
+    for (var g = 0; g < L; g++) {
+      var gx = -R - 1.0, gy = -R + g * 0.75;
+      box(gx, gy, 0.35, 0.6, 0.55, 1.1 + L * 0.15, '#2b2f45');
+      windows(gx, gy, 0.35, 0.6, 0.55, 1.1 + L * 0.15, 1, 3, ok ? '#a78bfa' : null, { left: false, cols2: 1 });
+    }
+    cyl(0, 0, 0.35, R, H, '#4c1d95');
+    ring(0, 0, 0.35 + H * 0.45, R * 1.01, H * 0.25, glowCol(), st === 'idle' ? 0.6 : 1, winAnim(2));
+    cyl(0, 0, 0.35 + H, R * 0.85, 0.25, '#6d28d9');
+    // glass dome: layered discs, the brain glows inside
+    var dz = 0.6 + H;
+    for (var d = 0; d < 4; d++) disc(0, 0, dz + d * R * 0.22, R * 0.82 * Math.cos(d * 0.38), mix('#c4b5fd', '#ffffff', d * 0.15), 0.35);
+    glowOrb(0, 0, dz + R * 0.45, 0.35 + L * 0.06, core, ok);
+    if (ok) {
+      ring(0, 0, dz + R * 0.45, R * 0.95, 0.05, core, 0.85, { ov: '0.3;1;0.3', du: st === 'heavy' ? '0.8s' : '2.2s' });
+      if (L >= 3) ring(0, 0, dz + R * 0.75, R * 0.7, 0.04, '#f0abfc', 0.8, { ov: '1;0.3;1', du: '2.6s' });
+    }
+    // cooling unit in front
+    if (L >= 2) { box(R * 0.4, R + 0.3, 0, 1.0, 0.6, 0.6, '#3a4356'); disc(R * 0.9, R + 0.6, 0.62, 0.22, '#1c1f26'); }
+    scaffold(-R, -R, 0.35, R * 2, R * 2, H, false);
+    topFx(0, 0, dz + R);
+  };
+  // Knowledge base: a library with a columned front and a tall shelf tower
+  T.library = function () {
+    var w = [2.4, 2.9, 3.4, 3.9][L - 1], d = [1.8, 2.1, 2.4, 2.7][L - 1], H = [1.2, 1.5, 1.8, 2.1][L - 1];
+    var x = -w / 2, y = -d / 2;
+    var books = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ec4899'];
+    baseFx(w * 0.8);
+    box(x - 0.3, y - 0.3, 0, w + 0.6, d + 0.8, 0.35, '#4a5468');
+    // shelf tower at the back: stacked "books"
+    var tz = 0.35, bh = 0.42, bx = x + w - 1.1, by = y - 0.25;
+    for (var b = 0; b < 4 + L; b++) { box(bx, by, tz, 0.9, 0.9, bh, books[b % books.length]); tz += bh; }
+    box(bx - 0.1, by - 0.1, tz, 1.1, 1.1, 0.12, '#e5e7eb');
+    box(x, y, 0.35, w, d, H, '#d6cfc2');
+    windows(x, y, 0.35, w, d, H, Math.max(2, Math.round(w / 0.8)), 1, st === 'idle' || st === 'scaling' ? '#fde68a' : null);
+    // pediment roof
+    var s2 = shade('#b45309');
+    var rz = 0.35 + H, ph = 0.6 + L * 0.1;
+    add(poly([P(x, y + d, rz), P(x + w, y + d, rz), P(x + w / 2, y + d, rz + ph)]), mix('#e7dfd1', '#ffffff', 0.1));
+    quad(P(x + w / 2, y, rz + ph), P(x + w / 2, y + d, rz + ph), P(x + w, y + d, rz), P(x + w, y, rz), s2.r);
+    quad(P(x, y, rz), P(x + w / 2, y, rz + ph), P(x + w / 2, y + d, rz + ph), P(x, y + d, rz), s2.t);
+    // columns in front
+    var cols = [3, 4, 5, 6][L - 1];
+    for (var c = 0; c < cols; c++) cyl(x + 0.25 + c * (w - 0.5) / (cols - 1), y + d + 0.35, 0.35, 0.12, H, '#f5f5f4');
+    box(x - 0.1, y + d + 0.1, 0.35 + H, w + 0.2, 0.5, 0.12, '#e7e5e4');
+    // a glowing "search" lens over the roof
+    var ok = st !== 'failed';
+    glowOrb(x + w / 2, y + d / 2, rz + ph + 0.7, 0.18 + L * 0.03, ok ? '#fde68a' : '#3a3f4b', ok && st !== 'idle');
+    scaffold(x, y, 0.35, w, d, H, false);
+    topFx(x + w / 2, y + d / 2, rz + ph);
+  };
+  // Tool server: a workshop with a big gear on the roof and a robot arm
+  T.workshop = function () {
+    var w = [2.2, 2.7, 3.2, 3.7][L - 1], H = [1.3, 1.6, 1.9, 2.2][L - 1];
+    var x = -w / 2, y = -w / 2;
+    var ok = st !== 'failed';
+    baseFx(w * 0.8);
+    box(x - 0.3, y - 0.3, 0, w + 0.6, w + 0.6, 0.35, '#4a5468');
+    box(x, y, 0.35, w, w, H, '#0e7490');
+    windows(x, y, 0.35, w, w, H, Math.max(2, Math.round(w / 0.8)), Math.max(1, L - 1), st === 'idle' ? '#a5f3fc' : null);
+    // roller door
+    quad(P(x + w * 0.3, y + w, 0.35), P(x + w * 0.7, y + w, 0.35), P(x + w * 0.7, y + w, 0.35 + H * 0.6), P(x + w * 0.3, y + w, 0.35 + H * 0.6), body('#164e63'));
+    // gear: a thin 16-sided disc with teeth
+    var gz = 0.35 + H, gr = w * 0.32;
+    var spin = ok && st !== 'idle';
+    for (var t = 0; t < 8; t++) {
+      var a = t * Math.PI / 4, tx = Math.cos(a) * gr, ty = Math.sin(a) * gr;
+      box(tx - 0.16, ty - 0.16, gz, 0.32, 0.32, 0.25, '#94a3b8');
+    }
+    prism(0, 0, gz, gr * 0.95, 0.25, 16, '#cbd5e1');
+    cyl(0, 0, gz + 0.25, gr * 0.35, 0.12, '#475569');
+    if (spin) ring(0, 0, gz + 0.3, gr * 1.1, 0.04, '#67e8f9', 0.8, { ov: '0.2;1;0.2', du: st === 'heavy' ? '0.5s' : '1.2s' });
+    // robot arm beside the building (longer with each level)
+    var ax = x + w + 0.5, ay = y + 0.4, ah = 0.8 + L * 0.35;
+    box(ax - 0.25, ay - 0.25, 0, 0.5, 0.5, 0.3, '#f59e0b');
+    pole(ax, ay, 0.3, ah, 0.14, '#f59e0b');
+    box(ax - 0.1, ay - 0.9, 0.3 + ah, 0.2, 1.0, 0.16, '#f59e0b');
+    glowOrb(ax, ay - 0.9, 0.3 + ah - 0.1, 0.09, ok ? '#67e8f9' : '#3a3f4b', spin);
+    scaffold(x, y, 0.35, w, w, H, false);
+    topFx(0, 0, gz + 0.4);
+  };
+  // Guardrail: a checkpoint gate, two pylons with a scanning energy wall
+  T.shield = function () {
+    var span = [2.6, 3.2, 3.8, 4.4][L - 1], ph = [2.0, 2.5, 3.0, 3.6][L - 1];
+    var ok = st !== 'failed';
+    var beam = ok ? (st === 'heavy' ? '#ff8a3d' : '#34d399') : '#3a3f4b';
+    baseFx(span * 0.6);
+    box(-span / 2 - 0.6, -0.9, 0, span + 1.2, 1.8, 0.35, '#4a5468');
+    // control booth at the back
+    box(-0.7, -1.8, 0.35, 1.4, 0.9, 1.0 + L * 0.15, '#1f2937');
+    windows(-0.7, -1.8, 0.35, 1.4, 0.9, 1.0 + L * 0.15, 2, 1, ok ? '#6ee7b7' : null);
+    function pylon(px) {
+      box(px - 0.3, -0.3, 0.35, 0.6, 0.6, ph, '#065f46');
+      box(px - 0.38, -0.38, 0.35 + ph, 0.76, 0.76, 0.15, '#10b981');
+      glowOrb(px, 0, 0.35 + ph + 0.35, 0.12, beam, ok && st !== 'idle');
+    }
+    pylon(-span / 2);
+    // the energy wall between the pylons
+    quad(P(-span / 2 + 0.3, 0, 0.45), P(span / 2 - 0.3, 0, 0.45), P(span / 2 - 0.3, 0, 0.35 + ph - 0.1), P(-span / 2 + 0.3, 0, 0.35 + ph - 0.1), beam, ok ? 0.25 : 0.6, ok ? { ov: '0.15;0.4;0.15', du: st === 'heavy' ? '0.6s' : '1.8s' } : null);
+    // scan lines moving down the wall
+    if (ok) for (var i = 0; i < 2 + L; i++) {
+      var z0 = 0.35 + ph * (0.2 + i * 0.7 / (2 + L));
+      quad(P(-span / 2 + 0.3, 0, z0), P(span / 2 - 0.3, 0, z0), P(span / 2 - 0.3, 0, z0 + 0.06), P(-span / 2 + 0.3, 0, z0 + 0.06), mix(beam, '#ffffff', 0.4), 0.9, { ov: '0;1;0', du: '1.4s', b: (i * 0.3).toFixed(1) + 's' });
+    }
+    pylon(span / 2);
+    // shield emblem on top of the booth
+    var sc = P(0, -1.35, 1.6 + L * 0.15), ss = 4 + L;
+    add('M' + r(sc[0] - ss) + ' ' + r(sc[1] - ss) + 'L' + r(sc[0] + ss) + ' ' + r(sc[1] - ss) + 'L' + r(sc[0] + ss) + ' ' + r(sc[1] + ss * 0.2) + 'Q' + r(sc[0]) + ' ' + r(sc[1] + ss * 1.6) + ' ' + r(sc[0] - ss) + ' ' + r(sc[1] + ss * 0.2) + 'Z', beam);
+    scaffold(-span / 2, -0.3, 0.35, span, 0.6, ph, false);
+    topFx(0, 0, ph + 0.6);
+  };
+  // Orchestrator: a control tower with helper drones circling it
+  T.tower = function () {
+    var R = [0.7, 0.85, 1.0, 1.15][L - 1], H = [2.4, 3.0, 3.6, 4.2][L - 1];
+    var ok = st !== 'failed';
+    var lit = ok ? (st === 'heavy' ? '#ff8a3d' : '#fbbf24') : '#3a3f4b';
+    baseFx(2.2);
+    prism(0, 0, 0, 1.9 + L * 0.2, 0.35, 6, '#4a5468', Math.PI / 6);
+    box(-1.6, -1.6, 0.35, 1.3, 1.3, 0.8, '#334155');
+    windows(-1.6, -1.6, 0.35, 1.3, 1.3, 0.8, 2, 1, ok ? '#fde68a' : null);
+    cyl(0, 0, 0.35, R, H, '#475569');
+    ring(0, 0, 0.35 + H * 0.3, R * 1.01, 0.12, lit, 0.8);
+    ring(0, 0, 0.35 + H * 0.6, R * 1.01, 0.12, lit, 0.8);
+    // cabin
+    var cz = 0.35 + H;
+    prism(0, 0, cz, R * 1.7, 0.7, 8, '#1e293b', Math.PI / 8);
+    ring(0, 0, cz + 0.15, R * 1.7, 0.45, ok ? '#fde68a' : '#2a2f3a', st === 'idle' ? 0.6 : 1, winAnim(3));
+    prism(0, 0, cz + 0.7, R * 1.85, 0.15, 8, '#f59e0b', Math.PI / 8);
+    pole(0, 0, cz + 0.85, 0.8, 0.06, '#9aa4b8');
+    glowOrb(0, 0, cz + 1.7, 0.14, lit, ok);
+    // helper agents: small drones around the tower, one beam each to the cabin
+    var n = L + 2;
+    for (var h = 0; h < n; h++) {
+      var a = Math.PI * 2 * h / n + 0.4, dr = R * 1.7 + 1.3;
+      var hx2 = Math.cos(a) * dr, hy = Math.sin(a) * dr, hz = cz - 0.6 + (h % 2) * 0.5;
+      if (ok && st !== 'idle') {
+        var p0 = P(hx2, hy, hz), p1 = P(0, 0, cz + 0.35);
+        add(poly([[p0[0], p0[1] - 0.5], [p1[0], p1[1] - 0.5], [p1[0], p1[1] + 0.5], [p0[0], p0[1] + 0.5]]), lit, 0.5, { ov: '0;0.8;0', du: st === 'heavy' ? '0.7s' : '1.6s', b: (h * 0.25).toFixed(2) + 's' });
+      }
+      glowOrb(hx2, hy, hz, 0.14, ok ? '#93c5fd' : '#3a3f4b', ok && st !== 'idle');
+    }
+    scaffold(-R, -R, 0.35, R * 2, R * 2, H, false);
+    topFx(0, 0, cz + 1.2);
+  };
+
   island();
   decor(false);
   (T[type] || T.server)();
@@ -577,7 +730,7 @@ function reducedMotion() {
 
 /**
  * SVG markup for one building.
- *   type  server | lb | db | cache | queue | cdn | firewall | broker
+ *   type  server | lb | db | cache | queue | cdn | firewall | broker | brain | library | workshop | shield | tower
  *   level 1–4 (bigger level = physically bigger building, same scale for every level)
  *   state idle | processing | heavy | scaling | failed
  *   opts.fit   crop to the building instead of the shared Lv 1–4 frame

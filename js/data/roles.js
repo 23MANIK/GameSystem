@@ -130,6 +130,79 @@ export const ROLES = {
     maxCount: 1,
     info: 'messageQueue',
     job: 'A buffer for events (like Kafka). Producers drop events in and move on; a worker processes them later, in batches.'
+  },
+  // ─── AI agents ───
+  llm: {
+    id: 'llm',
+    name: 'AI Model',
+    short: 'AI',
+    icon: '🤖',
+    componentId: 'llm_api',
+    unlockLevel: Infinity,
+    maxCount: 1,
+    info: 'llmModel',
+    // You rent it: the plan itself is cheap, the token bill is what costs (see SystemSimulator)
+    costMult: 0.3,
+    job: 'The "brain" you rent (like the Claude API): reads the prompt, writes the answer and decides which tool to use. You pay per token, and your plan caps how many tokens you may send each minute.',
+    // Its four parts are the limits of your API plan, not hardware
+    parts: {
+      cpu: { name: 'Tokens per minute', short: 'Tokens', icon: '🔤', info: 'tokensPerMinute', labels: ['Starter', 'Build', 'Scale', 'Enterprise'], specs: ['~200k tok/min', '~400k tok/min', '~800k tok/min', '~1.6M tok/min'],
+        whenFull: 'The provider answers "429 Too Many Requests" and those answers fail. A bigger plan, fewer tokens per question, or a queue that paces calls helps.',
+        whatItDoes: 'How many tokens (pieces of words) your plan lets you send each minute. Every question counts its instructions, chat history, documents and answer. Over the limit, the provider answers "429 Too Many Requests".' },
+      ram: { name: 'Answers at once', short: 'At once', icon: '⏳', info: 'llmConcurrency', labels: ['10', '20', '40', '80'], specs: ['in progress', 'in progress', 'in progress', 'in progress'],
+        whenFull: 'New questions wait until another answer finishes, so answers get slow.',
+        whatItDoes: 'How many answers can be written at the same time. Each one takes a few seconds, so busy minutes need more.' },
+      storage: { name: 'Context window', short: 'Context', icon: '📜', info: 'contextWindow', labels: ['32k', '64k', '128k', '200k'], specs: ['tokens per prompt', 'tokens per prompt', 'tokens per prompt', 'tokens per prompt'],
+        whenFull: 'A prompt that is too long is refused.',
+        whatItDoes: 'How long one prompt may be. Here every prompt fits, so it is never the limit.' },
+      network: { name: 'Requests per minute', short: 'Req/min', icon: '📮', info: 'rateLimits', labels: ['1,250', '12.5k', '125k', '1.25M'], specs: ['calls per minute', 'calls per minute', 'calls per minute', 'calls per minute'],
+        whenFull: 'Extra calls get "429 Too Many Requests". Fewer calls per question (or a queue) helps.',
+        whatItDoes: 'How many model calls your plan allows each minute. An agent that loops makes several calls per question.' }
+    }
+  },
+  kb: {
+    id: 'kb',
+    name: 'Knowledge base',
+    short: 'Knowledge',
+    icon: '📚',
+    componentId: 'vector_db',
+    unlockLevel: Infinity,
+    maxCount: 1,
+    info: 'knowledgeBase',
+    job: 'Your help articles, split into small chunks and stored as "meaning vectors" (a vector database). For each question it finds the few chunks that match best, and they go into the prompt.'
+  },
+  tools: {
+    id: 'tools',
+    name: 'Tool server',
+    short: 'Tools',
+    icon: '🧰',
+    componentId: 'tool_server',
+    unlockLevel: Infinity,
+    maxCount: 1,
+    info: 'toolServer',
+    job: 'The agent\'s hands: safe buttons such as "look up order" and "refund" that call your real systems (like an MCP server). The model asks for a tool; this server runs it and returns the result.'
+  },
+  guard: {
+    id: 'guard',
+    name: 'Guardrail',
+    short: 'Guard',
+    icon: '🛡️',
+    componentId: 'guardrail',
+    unlockLevel: Infinity,
+    maxCount: 1,
+    info: 'guardrail',
+    job: 'A safety check in front of the agent: a small model that spots tricks in what users type (prompt injection) and checks every answer and action before it goes out.'
+  },
+  orch: {
+    id: 'orch',
+    name: 'Orchestrator',
+    short: 'Orchestrator',
+    icon: '🧭',
+    componentId: 'orchestrator',
+    unlockLevel: Infinity,
+    maxCount: 1,
+    info: 'orchestrator',
+    job: 'A lead agent for big jobs: it plans, starts several helper agents that work in parallel, then combines what they found.'
   }
 };
 
@@ -148,11 +221,16 @@ export const CLOUD_EQUIVALENTS = {
   idgen: { aws: 'ElastiCache Redis INCR', gcp: 'Memorystore Redis INCR', oss: 'Redis / ticket server / Snowflake' },
   queue: { aws: 'MSK (Kafka) / Kinesis', gcp: 'Pub/Sub', oss: 'Apache Kafka' },
   blob: { aws: 'S3 (+ Glacier for cold)', gcp: 'Cloud Storage (Nearline / Coldline)', oss: 'MinIO / Ceph' },
-  sync: { aws: 'API Gateway WebSockets / EC2', gcp: 'Cloud Run (WebSockets)', oss: 'Node / Go WebSocket service' }
+  sync: { aws: 'API Gateway WebSockets / EC2', gcp: 'Cloud Run (WebSockets)', oss: 'Node / Go WebSocket service' },
+  llm: { aws: 'Amazon Bedrock (Claude)', gcp: 'Vertex AI (Claude, Gemini)', oss: 'Claude API / vLLM for open models' },
+  kb: { aws: 'OpenSearch / Aurora pgvector / Bedrock Knowledge Bases', gcp: 'Vertex AI Vector Search / AlloyDB pgvector', oss: 'pgvector / Pinecone / Qdrant' },
+  tools: { aws: 'Lambda / ECS behind an MCP server', gcp: 'Cloud Run (MCP server)', oss: 'MCP server (Node / Python)' },
+  guard: { aws: 'Bedrock Guardrails', gcp: 'Model Armor', oss: 'Llama Guard / NeMo Guardrails' },
+  orch: { aws: 'Step Functions / ECS', gcp: 'Cloud Run / Workflows', oss: 'Agent SDK / LangGraph' }
 };
 
 /** Order used for tabs, HUD chips and the map (front of the system first). */
-export const ROLE_ORDER = ['cdn', 'gateway', 'lb', 'web', 'app', 'sync', 'idgen', 'queue', 'cache', 'db', 'blob'];
+export const ROLE_ORDER = ['cdn', 'gateway', 'guard', 'lb', 'web', 'app', 'llm', 'orch', 'tools', 'sync', 'idgen', 'queue', 'cache', 'kb', 'db', 'blob'];
 
 /**
  * Where each machine sits on the 8×8 map. Tiles with the same x+y form a
@@ -172,8 +250,29 @@ export const ROLE_TILES = {
   idgen: [{ x: 5, y: 0 }],
   queue: [{ x: 6, y: 7 }],
   blob: [{ x: 7, y: 6 }],
-  sync: [{ x: 4, y: 0 }]
+  sync: [{ x: 4, y: 0 }],
+  llm: [{ x: 1, y: 2 }],
+  kb: [{ x: 4, y: 7 }],
+  tools: [{ x: 5, y: 6 }],
+  guard: [{ x: 0, y: 7 }],
+  orch: [{ x: 1, y: 1 }]
 };
+
+/**
+ * How a part of this role is shown: a rented AI model's "CPU" is really its
+ * tokens-per-minute limit. Falls back to the shared part (serverParts.js).
+ */
+export function partView(role, part) {
+  const o = ROLES[role]?.parts?.[part.id];
+  return o ? { ...part, ...o } : part;
+}
+
+/** An option's label and spec for this role (the AI model's plan tiers). */
+export function optionView(role, partId, opt, index) {
+  const o = ROLES[role]?.parts?.[partId];
+  if (!o || !opt) return opt;
+  return { ...opt, label: o.labels?.[index] ?? opt.label, spec: o.specs?.[index] ?? opt.spec };
+}
 
 /** How many of a role can run side by side (app servers, database shards). */
 export function roleMaxCount(role) {

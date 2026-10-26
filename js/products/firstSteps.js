@@ -6,6 +6,7 @@
 
 import { SERVER_PARTS } from '../data/serverParts.js';
 import { ROLE_NAME, suggestedFix } from '../game/Tutorial.js';
+import { partView } from '../data/roles.js';
 
 /** Level 1: build one server, open it to the public, upgrade the bottleneck. */
 export function firstLevelSteps({ welcome, parts, goLive }) {
@@ -43,7 +44,7 @@ export function firstLevelSteps({ welcome, parts, goLive }) {
     {
       id: 'bottleneck',
       text: (gs, ctx) => {
-        const part = SERVER_PARTS[ctx?.partId || gs.serverStatus?.busiest || 'cpu'];
+        const part = partView(ctx?.role || 'app', SERVER_PARTS[ctx?.partId || gs.serverStatus?.busiest || 'cpu']);
         const pct = Math.round((gs.serverStatus?.usage?.[part.id] || 0.8) * 100);
         return `${part.icon} <strong>${part.short}</strong> is at <strong>${pct}%</strong>, so it will run out first: your <em>bottleneck</em>. ${part.whenFull} Tap <strong>Server</strong> and buy a bigger ${part.short}.`;
       },
@@ -85,7 +86,7 @@ export function databaseLevelSteps({ welcome, buy, dataGrows }) {
       id: 'bottleneck',
       text: (gs, ctx) => {
         const role = ctx?.role || gs.serverStatus?.busiestRole || 'db';
-        const part = SERVER_PARTS[ctx?.partId || gs.serverStatus?.busiest || 'cpu'];
+        const part = partView(role, SERVER_PARTS[ctx?.partId || gs.serverStatus?.busiest || 'cpu']);
         const pct = Math.round((gs.serverStatus?.servers?.[role]?.usage?.[part.id] || 0.8) * 100);
         const fix = suggestedFix(gs, role, part.id);
         const advice = fix

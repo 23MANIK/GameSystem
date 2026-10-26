@@ -32,6 +32,7 @@ import guestbook from './guestbook/index.js';
 import urlShortener from './urlShortener/index.js';
 import cloudDrive from './cloudDrive/index.js';
 import newsFeed from './newsFeed/index.js';
+import aiAgent from './aiAgent/index.js';
 import ticketing from './ticketing/index.js';
 import adClicks from './adClicks/index.js';
 
@@ -40,6 +41,7 @@ export const PACKS = {
   url_shortener: urlShortener,
   cloud_drive: cloudDrive,
   news_feed: newsFeed,
+  ai_agent: aiAgent,
   ticketing,
   ad_clicks: adClicks
 };

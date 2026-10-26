@@ -463,6 +463,76 @@ export const COMPONENTS = {
         ]
     },
 
+    llm_api: {
+        id: 'llm_api',
+        name: 'AI Model (LLM API)',
+        description: 'A rented large language model, called per token.',
+        icon: '🤖',
+        category: 'compute',
+        maxCount: 1,
+        inputs: ['backend_server'],
+        outputs: [],
+        tiers: [
+            { name: 'Small', cost: 500, computeCost: 5, throughput: 500, latencyReduction: 0, capacityBonus: 0, description: 'An API plan with a tokens-per-minute limit.' }
+        ]
+    },
+
+    vector_db: {
+        id: 'vector_db',
+        name: 'Knowledge Base (vector DB)',
+        description: 'Help articles stored as vectors for meaning search.',
+        icon: '📚',
+        category: 'storage',
+        maxCount: 1,
+        inputs: ['backend_server'],
+        outputs: [],
+        tiers: [
+            { name: 'Small', cost: 500, computeCost: 5, throughput: 500, latencyReduction: 0, capacityBonus: 0, description: 'One vector index.' }
+        ]
+    },
+
+    tool_server: {
+        id: 'tool_server',
+        name: 'Tool Server (MCP)',
+        description: 'Safe actions an AI agent can call.',
+        icon: '🧰',
+        category: 'compute',
+        maxCount: 1,
+        inputs: ['backend_server'],
+        outputs: [],
+        tiers: [
+            { name: 'Small', cost: 500, computeCost: 5, throughput: 500, latencyReduction: 0, capacityBonus: 0, description: 'One tool server.' }
+        ]
+    },
+
+    guardrail: {
+        id: 'guardrail',
+        name: 'Guardrail',
+        description: 'Checks AI inputs and outputs for attacks and unsafe actions.',
+        icon: '🛡️',
+        category: 'security',
+        maxCount: 1,
+        inputs: ['backend_server'],
+        outputs: [],
+        tiers: [
+            { name: 'Small', cost: 500, computeCost: 5, throughput: 500, latencyReduction: 0, capacityBonus: 0, description: 'One safety classifier.' }
+        ]
+    },
+
+    orchestrator: {
+        id: 'orchestrator',
+        name: 'Orchestrator',
+        description: 'A lead agent that runs helper agents in parallel.',
+        icon: '🧭',
+        category: 'compute',
+        maxCount: 1,
+        inputs: ['backend_server'],
+        outputs: [],
+        tiers: [
+            { name: 'Small', cost: 500, computeCost: 5, throughput: 500, latencyReduction: 0, capacityBonus: 0, description: 'One lead agent.' }
+        ]
+    },
+
     search_engine: {
         id: 'search_engine',
         name: 'Search Engine (Elasticsearch)',
