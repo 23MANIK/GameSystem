@@ -71,7 +71,7 @@ export default class GameState {
     // Money in and out since the level started
     this.economy = { revenue: 0, cost: 0, costCarry: 0, penalties: 0, lost: 0 };
     // For end-of-level stats: how many users were online on average
-    this.liveStats = { ticks: 0, userSum: 0, peakUsers: 0, seconds: 0, healthyTicks: 0, botsBlocked: 0, clicksCounted: 0, brokenLinks: 0, cleanLinks: 0, lostEdits: 0, safeEdits: 0, uploadsOk: 0, uploadsTried: 0, brokenFiles: 0, verifiedFiles: 0, feedWrites: 0, fanoutBacklog: 0, fanoutClearSec: 0 };
+    this.liveStats = { ticks: 0, userSum: 0, peakUsers: 0, seconds: 0, healthyTicks: 0, botsBlocked: 0, clicksCounted: 0, brokenLinks: 0, cleanLinks: 0, lostEdits: 0, safeEdits: 0, uploadsOk: 0, uploadsTried: 0, brokenFiles: 0, verifiedFiles: 0, feedWrites: 0, fanoutBacklog: 0, fanoutClearSec: 0, clashedBookings: 0, safeBookings: 0, fairQueued: 0, accurateClicks: 0 };
     // 0–100. Outages lower it; low reputation slows growth and shrinks funding
     this.reputation = 100;
     // Current traffic spike (see TrafficSpikes.js) and seconds until the next one
@@ -968,7 +968,8 @@ export default class GameState {
       'readKind', 'botKind', 'spamPerUser', 'cacheHitRate', 'edgeHitRate', 'clickTracking', 'keepRecords', 'appCallCost',
       'readKB', 'writeKB', 'recordSpace', 'blobSpaceMult', 'bigFileShare', 'dedupShare', 'updateShare', 'devicesPerUser',
       'pollPerDevice', 'listReadsPerUser', 'conflictShare', 'publicShare', 'unverifiedShare', 'browsePerUser',
-      'shardIdClash', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult']) {
+      'shardIdClash', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult',
+      'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare']) {
       if (L[key] !== undefined) params[key] = L[key];
     }
     if (this.spike?.kind === 'bots') params.botMult = this.spike.mult;
@@ -1118,7 +1119,7 @@ export default class GameState {
     this.challengesDone = [];
     this.achievements = { ...this.achievements, spikeHandled: false, botsHandled: false, crashHandled: false, audienceReached: false };
     this.economy = { revenue: 0, cost: 0, costCarry: 0, penalties: 0, lost: 0 };
-    this.liveStats = { ticks: 0, userSum: 0, peakUsers: 0, seconds: 0, healthyTicks: 0, botsBlocked: 0, clicksCounted: 0, brokenLinks: 0, cleanLinks: 0, lostEdits: 0, safeEdits: 0, uploadsOk: 0, uploadsTried: 0, brokenFiles: 0, verifiedFiles: 0, feedWrites: 0, fanoutBacklog: 0, fanoutClearSec: 0 };
+    this.liveStats = { ticks: 0, userSum: 0, peakUsers: 0, seconds: 0, healthyTicks: 0, botsBlocked: 0, clicksCounted: 0, brokenLinks: 0, cleanLinks: 0, lostEdits: 0, safeEdits: 0, uploadsOk: 0, uploadsTried: 0, brokenFiles: 0, verifiedFiles: 0, feedWrites: 0, fanoutBacklog: 0, fanoutClearSec: 0, clashedBookings: 0, safeBookings: 0, fairQueued: 0, accurateClicks: 0 };
     this.spike = null;
     this.nextSpikeIn = null;
     this.warnedParts = [];
@@ -1192,7 +1193,7 @@ export default class GameState {
     this.challengesDone = Array.isArray(data.challengesDone) ? data.challengesDone : [];
     this.achievements = { signed: false, read: false, ...(data.achievements || {}) };
     this.economy = { revenue: 0, cost: 0, costCarry: 0, penalties: 0, lost: 0, ...(data.economy || {}) };
-    this.liveStats = { ticks: 0, userSum: 0, peakUsers: 0, seconds: 0, healthyTicks: 0, botsBlocked: 0, clicksCounted: 0, brokenLinks: 0, cleanLinks: 0, lostEdits: 0, safeEdits: 0, uploadsOk: 0, uploadsTried: 0, brokenFiles: 0, verifiedFiles: 0, feedWrites: 0, fanoutBacklog: 0, fanoutClearSec: 0, ...(data.liveStats || {}) };
+    this.liveStats = { ticks: 0, userSum: 0, peakUsers: 0, seconds: 0, healthyTicks: 0, botsBlocked: 0, clicksCounted: 0, brokenLinks: 0, cleanLinks: 0, lostEdits: 0, safeEdits: 0, uploadsOk: 0, uploadsTried: 0, brokenFiles: 0, verifiedFiles: 0, feedWrites: 0, fanoutBacklog: 0, fanoutClearSec: 0, clashedBookings: 0, safeBookings: 0, fairQueued: 0, accurateClicks: 0, ...(data.liveStats || {}) };
     this.reputation = typeof data.reputation === 'number' ? data.reputation : 100;
     this.spike = data.spike && typeof data.spike === 'object' ? data.spike : null;
     this.nextSpikeIn = typeof data.nextSpikeIn === 'number' ? data.nextSpikeIn : null;
