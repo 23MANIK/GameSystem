@@ -6,7 +6,7 @@
 
 import { SERVER_PARTS } from '../data/serverParts.js';
 import { CODE_FIXES } from '../data/codeFixes.js';
-import { ROLES } from '../data/roles.js';
+import { ROLES, partView } from '../data/roles.js';
 
 const LEVEL_1_STEPS = [
   {
@@ -67,7 +67,10 @@ const LEVEL_1_STEPS = [
   }
 ];
 
-export const ROLE_NAME = { app: 'app server', db: 'database' };
+// Lower-case machine names for the guide's sentences (any role: falls back to its name)
+export const ROLE_NAME = new Proxy({ app: 'app server', db: 'database' }, {
+  get: (names, role) => names[role] ?? ROLES[role]?.name?.toLowerCase()
+});
 
 /** Which code fix would help with a busy part, if it isn't bought yet. */
 function guestbookSuggestedFix(gs, role, partId) {
@@ -118,7 +121,7 @@ const LEVEL_2_STEPS = [
     id: 'bottleneck',
     text: (gs, ctx) => {
       const role = ctx?.role || gs.serverStatus?.busiestRole || 'db';
-      const part = SERVER_PARTS[ctx?.partId || gs.serverStatus?.busiest || 'cpu'];
+      const part = partView(role, SERVER_PARTS[ctx?.partId || gs.serverStatus?.busiest || 'cpu']);
       const pct = Math.round((gs.serverStatus?.servers?.[role]?.usage?.[part.id] || 0.8) * 100);
       const fix = suggestedFix(gs, role, part.id);
       const advice = fix

@@ -45,7 +45,7 @@ export default class TrafficSpikes {
   kinds() {
     const L = this.gameState.levelDef();
     const kinds = ['spike'];
-    if (L.botShare) kinds.push('bots');
+    if (L.botShare || L.injectShare) kinds.push('bots');   // bots, or prompt-injection attacks on an AI agent
     if (L.crashes) kinds.push('crash');
     return kinds;
   }

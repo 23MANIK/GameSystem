@@ -6,7 +6,7 @@ import { openFeedback } from './Feedback.js';
 
 import { LEVELS } from '../data/levels.js';
 import { PART_ORDER, SERVER_PARTS } from '../data/serverParts.js';
-import { ROLES } from '../data/roles.js';
+import { ROLES, partView } from '../data/roles.js';
 import { getChallenges } from '../game/Challenges.js';
 import { infoButton } from './InfoTips.js';
 
@@ -187,6 +187,11 @@ export default class HUD {
       const row = document.getElementById(`hud-res-${partId}`);
       if (!fill || !pct || !row) continue;
 
+      // A rented AI model's parts are its plan limits (Tokens, At once…)
+      const part = partView(role, SERVER_PARTS[partId]);
+      const label = row.querySelector('.hud-res-label');
+      if (label && label.textContent !== part.short) label.textContent = part.short;
+      row.title = `${part.name}: ${part.whatItDoes}`;
       const usage = usageOf ? usageOf[partId] : 0;
       const p = Math.round(usage * 100);
       fill.style.width = `${Math.min(100, p)}%`;
@@ -199,14 +204,17 @@ export default class HUD {
     const lat = document.getElementById('hud-latency');
     if (lat) {
       const ms = gs.metrics?.latency || 0;
-      lat.textContent = status ? `${ms}ms` : '–';
-      lat.style.color = !status ? '' : ms < 60 ? 'var(--accent-cyan)' : ms < 120 ? 'var(--accent-amber)' : 'var(--accent-red)';
+      // AI answers take seconds, so they are shown (and judged) in seconds
+      const agent = Boolean(status?.flows?.agent);
+      lat.textContent = !status ? '–' : agent ? `${(ms / 1000).toFixed(1)} s` : `${ms}ms`;
+      const [good, ok] = agent ? [3000, 6000] : [60, 120];
+      lat.style.color = !status ? '' : ms < good ? 'var(--accent-cyan)' : ms < ok ? 'var(--accent-amber)' : 'var(--accent-red)';
     }
     // Phones: the same number in the bars strip
     const latMini = document.getElementById('hud-lat-mini');
     if (latMini) {
       const ms = gs.metrics?.latency || 0;
-      latMini.textContent = status ? `${ms}ms` : '–';
+      latMini.textContent = !status ? '–' : status.flows?.agent ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
       latMini.style.color = lat?.style.color || '';
     }
   }

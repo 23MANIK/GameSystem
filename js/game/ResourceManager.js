@@ -46,7 +46,9 @@ export default class ResourceManager {
       // so more to earn if the server keeps up and more to lose if it doesn't.
       const mult = gs.spike?.kind === 'spike' ? gs.spike.mult : 1;
       const errorRate = gs.metrics?.errorRate || 0;
-      const potential = (gs.users / 100) * levelDef.coinRate * mult;
+      // AI agents: a wrong answer earns nothing (the customer asks a human, or leaves)
+      const quality = gs.serverStatus?.answerQuality ?? 1;
+      const potential = (gs.users / 100) * levelDef.coinRate * mult * quality;
       const earned = potential * (1 - errorRate);
       const lost = potential - earned;
       gs.earnRevenue(earned);
@@ -98,6 +100,18 @@ export default class ResourceManager {
         live.fairQueued = (live.fairQueued || 0) + (st?.rushQueuedPerSec || 0) * (1 - (st?.errorRate || 0)) * deltaSeconds;
         // Ad clicks: clicks counted while the count is 99%+ accurate
         if (st?.clickAccuracy != null && st.clickAccuracy >= 0.99) live.accurateClicks = (live.accurateClicks || 0) + st.clicksPerSec * deltaSeconds;
+        // AI agents: answers given, tool tasks done, loops stuck, attacks, research jobs
+        if (st?.answersPerSec != null) {
+          live.answers = (live.answers || 0) + st.answersPerSec * deltaSeconds;
+          live.goodAnswers = (live.goodAnswers || 0) + st.goodAnswersPerSec * deltaSeconds;
+          live.toolTasks = (live.toolTasks || 0) + (st.toolTasksPerSec || 0) * deltaSeconds;
+          live.stuckLoops = (live.stuckLoops || 0) + (st.stuckLoopsPerSec || 0) * deltaSeconds;
+          live.loopFreeSec = st.stuckLoopsPerSec ? 0 : (live.loopFreeSec || 0) + deltaSeconds;
+          live.badActions = (live.badActions || 0) + (st.badActionsPerSec || 0) * deltaSeconds;
+          live.safeSec = st.badActionsPerSec > 0.001 ? 0 : (live.safeSec || 0) + deltaSeconds;
+          live.researchDone = (live.researchDone || 0) + (st.researchPerSec || 0) * (1 - st.errorRate) * deltaSeconds;
+          live.cachedAnswers = (live.cachedAnswers || 0) + (st.cacheAnswersPerSec || 0) * deltaSeconds;
+        }
         if (st && st.dbCount >= 2 && !st.collisionShare && !st.diskFull) {
           live.cleanLinks = (live.cleanLinks || 0) + st.recordsPerSec * (1 - st.errorRate) * deltaSeconds;
         }
