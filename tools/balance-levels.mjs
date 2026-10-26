@@ -33,7 +33,8 @@ const { CODE_FIXES, fixesForLevel } = await import(root + 'data/codeFixes.js');
 const PARAM_KEYS = ['readsPerUser', 'writesPerUser', 'pageViewsPerUser', 'pageKB', 'botShare', 'botKind', 'spamPerUser',
   'globalShare', 'distanceMs', 'dbReadCost', 'readKind', 'cacheHitRate', 'edgeHitRate', 'clickTracking', 'keepRecords', 'appCallCost', 'shardIdClash', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult',
   'readKB', 'writeKB', 'recordSpace', 'blobSpaceMult', 'bigFileShare', 'dedupShare', 'updateShare', 'devicesPerUser',
-  'pollPerDevice', 'listReadsPerUser', 'conflictShare', 'publicShare', 'unverifiedShare', 'browsePerUser'];
+  'pollPerDevice', 'listReadsPerUser', 'conflictShare', 'publicShare', 'unverifiedShare', 'browsePerUser',
+  'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare'];
 
 function params(L) {
   const p = {};
@@ -114,7 +115,7 @@ function line(label, r, L) {
   if (!r) return `  ${label}: –`;
   const s = r.s;
   const revenue = Math.round(L.userTarget / 100 * (L.coinRate || 25) * 30);
-  const flags = [s.diskFull ? 'DISK FULL' : '', s.collisionShare ? 'CODE CLASHES' : '', s.clickAccuracy != null && s.clickAccuracy < 0.95 ? `clicks ${Math.round(s.clickAccuracy * 100)}%` : ''].filter(Boolean).join(' ');
+  const flags = [s.diskFull ? 'DISK FULL' : '', s.collisionShare ? 'CODE CLASHES' : '', s.clashShare ? 'DOUBLE BOOKINGS' : '', s.clickAccuracy != null && s.clickAccuracy < 0.95 ? `clicks ${Math.round(s.clickAccuracy * 100)}%` : ''].filter(Boolean).join(' ');
   return `  ${label.padEnd(12)} ${r.ok ? 'OK  ' : 'FAIL'} limit ${String(s.userLimit).padStart(6)}  runs out: ${(s.bottleneckRole + '.' + s.bottleneck).padEnd(14)} latency ${String(s.latency).padStart(4)} ms  `
     + `buy ${String(r.price).padStart(6)}  run ${String(r.run).padStart(5)}/min  revenue ~${revenue}/min  apps ${r.apps} shards ${r.shards} ${flags}`;
 }

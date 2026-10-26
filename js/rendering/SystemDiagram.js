@@ -19,6 +19,7 @@
 import { ROLES, CLOUD_EQUIVALENTS } from '../data/roles.js';
 import { getOption, PART_ORDER, SERVER_PARTS, runningCostPerMinute } from '../data/serverParts.js';
 import { infoButton } from '../ui/InfoTips.js';
+import { vocab } from '../products/registry.js';
 
 const COLORS = {
   read: '#06d6a0',
@@ -443,14 +444,15 @@ export default class SystemDiagram {
     if (p.gateway || p.lb) box(['gateway', 'lb'], 'Front door', 'tier-front');
     if (p.web) box(['web'], 'Web tier', 'tier-web');
     if (p.idgen) box(['idgen'], 'ID service', 'tier-ids');
-    if (p.queue) box(['queue'], 'Async · analytics', 'tier-async');
+    if (p.queue) box(['queue'], gs.levelDef().rushPerUser ? 'Waiting room' : 'Async · analytics', 'tier-async');
     if (appIds.length) {
       const n = gs.appCount();
       const label = !gs.hasDatabaseLevel() ? 'Your server' : n > 1 ? `App tier · ${n} servers` : 'App tier';
       box(appIds, label, 'tier-app');
     }
-    if (p.db || p.cache) box(['cache', 'db'], p.dbCount > 1 ? `Data tier · ${p.dbCount} shards` : (p.blob ? 'Metadata' : 'Data tier'), 'tier-data');
-    if (p.blob) box(['blob'], 'File storage', 'tier-blob');
+    const files = gs.levelDef().readKind === 'file';
+    if (p.db || p.cache) box(['cache', 'db'], p.dbCount > 1 ? `Data tier · ${p.dbCount} shards` : (p.blob && files ? 'Metadata' : 'Data tier'), 'tier-data');
+    if (p.blob) box(['blob'], files ? 'File storage' : 'Data lake', 'tier-blob');
     if (p.sync) box(['sync'], 'Live sync', 'tier-ids');
     this.buildLegend(p);
   }
@@ -459,10 +461,10 @@ export default class SystemDiagram {
   buildLegend(p) {
     const gs = this.gameState;
     const L = gs.levelDef();
-    const items = [['read', L.readKind === 'lookup' ? 'redirect' : 'read'], ['write', L.readKind === 'lookup' ? 'new link' : 'write']];
+    const items = [['read', L.readKind === 'lookup' ? vocab('readName') : 'read'], ['write', L.readKind === 'lookup' ? `new ${vocab('record')}` : 'write']];
     if (p.web || L.pageViewsPerUser) items.push(['page', 'page']);
     if (L.botShare || L.spamPerUser) items.push(['bot', L.botKind === 'write' ? 'spam' : 'bot']);
-    if (p.queue || L.clickTracking || p.sync) items.push(['event', p.sync ? 'event / push' : 'click event']);
+    if (p.queue || L.clickTracking || p.sync) items.push(['event', p.sync ? 'event / push' : L.rushPerUser ? 'fan in line' : 'click event']);
     if (L.readKind === 'file' && p.app) items.push(['resp', 'response back']);
     items.push(['fail', 'failed']);
     this.legendEl.innerHTML = items.map(([k, label]) => `<span>${shapeIcon(SHAPES[k], COLORS[k])}${label}</span>`).join('');
@@ -578,15 +580,20 @@ export default class SystemDiagram {
       N.appTop = { id: 'appTop', role: 'app', x: cx, y: top, w: 0, h: 0, virtual: true };
       N.appBottom = { id: 'appBottom', role: 'app', x: cx, y: bottom, w: 0, h: 0, virtual: true };
       if (N.idgen) add(Math.abs(N.idgen.x - cx) < 10 ? 'appTop' : 'appTier', 'idgen', 'to-idgen', 'next ID');
-      if (N.queue) add('appBottom', 'queue', 'to-queue', 'click events');
-      if (N.queue && N.db) add('queue', 'db', 'queue-batch', 'batched counts');
+      // A waiting room holds fans in line; otherwise the queue carries click events to a batch writer
+      const waiting = Boolean(this.gameState.levelDef().rushPerUser);
+      if (N.queue) add('appBottom', 'queue', 'to-queue', waiting ? 'fans in line' : 'click events');
+      if (N.queue && N.db && !waiting) add('queue', 'db', 'queue-batch', 'batched counts');
     }
     // Edge redirects log their clicks to the queue too
     if (N.cdn && N.queue) add('cdn', 'queue', 'edge-events', null);
 
     // Files: bytes go through the app to blob storage, or straight from users
     // with pre-signed URLs; devices keep a live connection to the sync server
-    if (N.blob) {
+    if (N.blob && this.gameState.levelDef().readKind !== 'file') {
+      // Data lake: the click stream copies every raw event into it
+      if (N.queue) add('queue', 'blob', 'queue-lake', 'raw clicks');
+    } else if (N.blob) {
       if (p.direct) add('users', 'blob', 'direct-blob', 'direct upload / download');
       else if (N.appTier) add('appTier', 'blob', 'to-blob', 'file bytes');
     }
@@ -887,7 +894,8 @@ export default class SystemDiagram {
         'to-idgen': ['Each new short link asks for the next unique ID (or a block of 1,000).', [], 'The ID(s).'],
         'to-queue': ['Click events dropped into the queue; the redirect doesn\'t wait.', [], 'Just "accepted": the work happens later.'],
         'edge-events': ['Edge servers log the clicks they answered to the queue.', [], '—'],
-        'queue-batch': ['A worker reads events in batches and writes one row per 50.', [], 'An OK per batch.']
+        'queue-batch': ['A worker reads events in batches and writes one row per 50.', [], 'An OK per batch.'],
+        'queue-lake': ['Every raw event is also copied from the stream into the data lake, in big files.', [], '—']
       };
       const t = texts[e.flow] || ['Requests between these two machines.', [], 'Their responses.'];
       [what, steps, back] = t;
@@ -1010,6 +1018,7 @@ export default class SystemDiagram {
       case 'queue-batch': return f.batchWrites || 0;
       case 'to-blob': return f.bytesViaApp ? f.blobIn || 0 : 0;
       case 'direct-blob': return f.bytesViaApp ? 0 : f.blobIn || 0;
+      case 'queue-lake': return f.blobIn || 0;
       case 'to-sync': return f.devices || 0;
       case 'sync-push': return f.pushes || 0;
       default: return 0;
@@ -1038,7 +1047,7 @@ export default class SystemDiagram {
   pickKind(e, f) {
     const r = Math.random();
     if (e.flow === 'to-web') return 'page';
-    if (['to-queue', 'edge-events', 'queue-batch'].includes(e.flow)) return 'event';
+    if (['to-queue', 'edge-events', 'queue-batch', 'queue-lake'].includes(e.flow)) return 'event';
     if (e.flow === 'to-idgen') return 'write';
     if (e.flow === 'to-sync' || e.flow === 'sync-push') return 'event';
     if (e.flow === 'to-blob' || e.flow === 'direct-blob') return r < f.writes / Math.max(1e-9, f.writes + f.reads) ? 'write' : 'read';

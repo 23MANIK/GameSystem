@@ -8,6 +8,7 @@ export function openFeedback(context = '') {
   dialog.querySelector('.fb-status').textContent = '';
   dialog.querySelector('form').hidden = false;
   dialog.querySelector('.fb-done').hidden = true;
+  dialog.syncSend();
   dialog.showModal();
   dialog.querySelector('textarea').focus();
 }
@@ -27,13 +28,19 @@ function build() {
       </div>
       <input name="website" class="fb-trap" tabindex="-1" autocomplete="off" aria-hidden="true">
       <p class="fb-status" role="status"></p>
-      <button type="submit" class="btn btn-primary fb-send">Send</button>
+      <button type="submit" class="btn btn-primary fb-send" disabled>Send</button>
     </form>
     <div class="fb-done" hidden><div class="fb-done-icon">🙌</div><p>Thanks! Your feedback was sent.</p><button type="button" class="btn btn-secondary fb-close">Close</button></div>`;
   document.body.appendChild(d);
   const form = d.querySelector('form'), ta = d.querySelector('textarea'), status = d.querySelector('.fb-status'), send = d.querySelector('.fb-send');
   d.addEventListener('click', e => { if (e.target === d || e.target.closest('.fb-close')) d.close(); });
-  ta.addEventListener('input', () => { d.querySelector('.fb-count').textContent = `${ta.value.length} / 1000`; });
+  // Send stays off until there's something to send
+  const sync = () => {
+    d.querySelector('.fb-count').textContent = `${ta.value.length} / 1000`;
+    if (status.textContent !== 'Sending…') send.disabled = ta.value.trim().length < 5;
+  };
+  ta.addEventListener('input', sync);
+  d.syncSend = sync;
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(form));
@@ -45,7 +52,8 @@ function build() {
       if (res.ok && out.ok) { form.reset(); ta.dispatchEvent(new Event('input')); form.hidden = true; d.querySelector('.fb-done').hidden = false; }
       else status.textContent = out.error || (res.status === 404 ? 'Feedback works on the live site only.' : 'Couldn\'t send right now. Please try again later.');
     } catch { status.textContent = 'You seem to be offline. Please try again.'; }
-    send.disabled = false;
+    if (status.textContent === 'Sending…') status.textContent = '';
+    sync();
   });
   return d;
 }

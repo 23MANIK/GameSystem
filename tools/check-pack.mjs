@@ -48,8 +48,8 @@ for (const block of blocks) {
   const withRow = rows.find(l => l.trim().startsWith('with '));
   const withOk = /\bOK\b/.test(withRow || '');
   const withoutRow = rows.find(l => l.trim().startsWith('without '));
-  const withoutBroken = withoutRow ? /FAIL|DISK FULL|CODE CLASHES|clicks \d+%/.test(withoutRow) : null;
-  const run = Number(withRow?.match(/run\s+(\d+)\/min/)?.[1]);
+  const withoutBroken = withoutRow ? /FAIL|DISK FULL|CODE CLASHES|DOUBLE BOOKINGS|clicks \d+%/.test(withoutRow) : null;
+  const run = Number(withRow?.match(/run\s+([\d.]+)\/min/)?.[1]);
   const revenue = Number(withRow?.match(/revenue ~(\d+)/)?.[1]);
   const limit = Number(withRow?.match(/limit\s+(\d+)/)?.[1]);
   if (!(limit >= target)) errors.push(`Level ${level}: best system fits ${limit} users, target ${target}`);

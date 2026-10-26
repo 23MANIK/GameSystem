@@ -141,7 +141,7 @@ export const GUESTBOOK_CHALLENGES = {
     usersChallenge(600, 'Bots eat CPU and bandwidth that real users need. Block them first, then grow.'),
     {
       id: 'clean-errors',
-      icon: '✅',
+      icon: '🛡️',
       info: 'uptime',
       label: 'Under 1% failed requests with 600+ users',
       hint: 'Real users should barely notice the bots. If errors stay high, check which machine runs out first.',
@@ -215,7 +215,7 @@ export function placedChallenge(role, icon, label, hint) {
   return {
     id: `place-${role}`,
     icon,
-    info: { db: 'database', web: 'webServer', gateway: 'gateway', lb: 'loadBalancer', cache: 'cache', cdn: 'cdn', idgen: 'idGenerator', queue: 'messageQueue' }[role],
+    info: { db: 'database', web: 'webServer', gateway: 'gateway', lb: 'loadBalancer', cache: 'cache', cdn: 'cdn', idgen: 'idGenerator', queue: 'messageQueue', blob: 'blobStorage', sync: 'syncServer' }[role],
     label,
     hint,
     progress: gs => ({ value: gs.isPlaced(role) ? 1 : 0, target: 1, unit: '', display: gs.isPlaced(role) ? 'Done' : 'Not built yet' })

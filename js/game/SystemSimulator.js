@@ -75,6 +75,17 @@ function trafficParams(params = {}) {
     fanoutPerWrite: 0,    // feed writes per real post (followers' feeds to update)
     celebrityShare: 0,    // share of posts from huge accounts
     celebrityMult: 1000,  // their fan-out is this many times bigger
+    // ─── Bookings (ticketing) ───
+    clashShare: 0,        // bookings that grab a seat someone else is paying for (unless seats are held)
+    searchPerUser: 0,     // keyword searches per online user per second
+    searchCacheHit: 0.5,  // repeated searches a cache answers
+    rushPerUser: 0,       // on-sale frenzy: extra "book now!" attempts per user (a waiting room queues them)
+    // ─── Analytics (ad clicks) ───
+    reportPerUser: 0,     // advertiser dashboard queries per online user per second
+    reportCost: 3,        // database CPU per dashboard query that scans raw events
+    dupShare: 0,          // clicks that arrive twice (counted twice unless deduplicated)
+    hotShare: 0,          // share of clicks on one viral ad (one hot queue partition)
+    lossShare: 0,         // clicks the stream loses (restarts, late events) unless reconciled
     ...params
   };
 }
@@ -168,15 +179,41 @@ function trafficFlow(m, entries, fixes, p, shards) {
     };
   }
 
+  // ─── Bookings ───
+  // Without seat holds, two people can buy the same seat: one of them pays and loses it
+  const clashShare = p.clashShare && !fixes.holds ? p.clashShare : 0;
+  const holdWrites = p.clashShare && fixes.holds ? w * 0.5 : 0;       // reserve, then confirm
+  const searches = p.searchPerUser * (1 - edgeHit);
+  const searchesDb = searches * (m.cache ? 1 - p.searchCacheHit : 1);
+  const searchCost = fixes.searchIndex ? 0.08 : 0.5 + entries / 2000;  // LIKE '%…%' scans every event
+  // On-sale frenzy: without a waiting room every attempt hits the booking path
+  const rush = p.rushPerUser || 0;
+  const rushQueued = m.queue ? rush : 0;
+  const rushDirect = m.queue ? 0 : rush;
+  // ─── Analytics ───
+  const reports = p.reportPerUser || 0;
+  const rollups = Boolean(fixes.rollups && m.queue);
+  const reportDbCost = rollups ? 0.05 : p.reportCost;
+  const streamWork = rollups ? queuedClicks : 0;                        // windowed counts per minute
+  const deduped = Boolean(fixes.dedupIds && m.cache);
+  const dupCount = clicks && p.dupShare && !deduped ? p.dupShare : 0;   // share of extra (double) counts
+  const dedupLookups = deduped ? clicks : 0;
+  const hotMult = m.queue && p.hotShare && !fixes.saltKeys ? 1 + p.hotShare * 60 : 1;
+  const reconciled = Boolean(fixes.reconcile && m.blob);
+  const lostClicks = clicks && p.lossShare && !reconciled ? p.lossShare : 0;
+  const archived = m.blob ? clicks : 0;                                  // raw events copied to the data lake
+
   return {
     r, w, wAll, R, respKB, splitUi, lookup,
+    clashShare, holdWrites, searches, searchesDb, searchCost, rush, rushQueued, rushDirect,
+    reports, reportDbCost, rollups, streamWork, dupCount, dedupLookups, hotMult, lostClicks, archived,
     botsIn, botsPassed, botReads, edgeHit, cacheHit,
     readsOrigin, pagesOrigin, dbReads: dbReads + mergeReads * (1 - cacheHit),
     codeChecks, collisionShare, idRequests,
-    clicks, clicksOrigin, syncClickWrites, queuedClicks, dbWrites,
+    clicks, clicksOrigin, syncClickWrites, queuedClicks, dbWrites: dbWrites + holdWrites,
     fanoutPerPost, fanoutWrites, fanoutInline, fanoutQueued, mergeReads,
-    apiOrigin: readsOrigin + wAll,
-    apiIn: (r + (writeBots ? 0 : botsIn)) * (1 - edgeHit) + w + (writeBots ? botsIn : 0)
+    apiOrigin: readsOrigin + wAll + searches + rushDirect + reports,
+    apiIn: (r + (writeBots ? 0 : botsIn)) * (1 - edgeHit) + w + (writeBots ? botsIn : 0) + searches + rush + reports
   };
 }
 
@@ -190,6 +227,12 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
   const diskPerWrite = 1 + (fixes.index ? 0.2 : 0);          // the index must be updated too
   const clickCpu = f.syncClickWrites * 0.1 + (m.queue ? f.clicksOrigin * 0.02 : 0); // app work per click
   const writeKB = f.lookup ? 1 : 1;
+  // Searches, "book now!" attempts (seat-lock checks) and dashboard queries the database answers
+  const extraDb = f.file ? { cpu: 0, storage: 0, network: 0 } : {
+    cpu: (f.searchesDb || 0) * f.searchCost + (f.rushDirect || 0) * 1.5 + (f.reports || 0) * f.reportDbCost,
+    storage: (f.searchesDb || 0) * (fixes.searchIndex ? 0.1 : 0.5 + entries / 4000) + (f.rushDirect || 0) * 0.3 + (f.reports || 0) * (f.rollups ? 0.05 : 1),
+    network: (f.searchesDb || 0) * 2 + (f.rushDirect || 0) * 0.5 + (f.reports || 0) * 2
+  };
   const loads = {};
 
   if (f.file) {
@@ -241,17 +284,17 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
   } else if (!m.db) {
     // One machine does everything
     loads.app = {
-      cpu: { base: 0, perUser: f.readsOrigin * (1 + scanCpu) + f.codeChecks * (1 + scanCpu) + f.wAll + f.syncClickWrites * 0.5 + f.pagesOrigin + f.fanoutWrites * 0.1 },
+      cpu: { base: 0, perUser: f.readsOrigin * (1 + scanCpu) + f.codeChecks * (1 + scanCpu) + f.wAll + f.syncClickWrites * 0.5 + f.pagesOrigin + f.fanoutWrites * 0.1 + extraDb.cpu + (f.rushDirect || 0) * 0.6 },
       ram: { base: 400, perUser: 15 },
-      storage: { base: 0, perUser: (f.readsOrigin + f.codeChecks) * diskPerRead + (f.wAll + f.syncClickWrites + f.fanoutWrites * 0.3) * diskPerWrite + f.pagesOrigin * 0.05 },
-      network: { base: 0, perUser: f.readsOrigin * f.respKB + f.wAll * writeKB + f.pagesOrigin * p.pageKB }
+      storage: { base: 0, perUser: (f.readsOrigin + f.codeChecks) * diskPerRead + (f.wAll + f.syncClickWrites + f.fanoutWrites * 0.3 + (f.holdWrites || 0)) * diskPerWrite + f.pagesOrigin * 0.05 + extraDb.storage },
+      network: { base: 0, perUser: f.readsOrigin * f.respKB + f.wAll * writeKB + f.pagesOrigin * p.pageKB + extraDb.network }
     };
   } else {
     const appPages = m.web ? 0 : f.pagesOrigin; // without a web server, the app serves the UI too
     // Load on EACH app server (the load balancer splits it N ways)
     loads.app = {
       // A JSON API call (Level 3+) is lighter than building a whole page
-      cpu: { base: 0, perUser: (f.apiOrigin * (p.appCallCost ?? (f.splitUi ? 0.3 : 0.4)) + appPages + clickCpu + f.fanoutInline * 0.1) / N },
+      cpu: { base: 0, perUser: (f.apiOrigin * (p.appCallCost ?? (f.splitUi ? 0.3 : 0.4)) + appPages + clickCpu + f.fanoutInline * 0.1 + (f.dedupLookups || 0) * 0.02) / N },
       ram: { base: 300, perUser: 5 / N },
       storage: { base: 0, perUser: (f.apiOrigin * 0.02 + appPages * 0.05) / N },
       network: { base: 0, perUser: (f.readsOrigin * f.respKB + f.wAll + appPages * p.pageKB + f.fanoutInline * 0.1) / N }
@@ -259,13 +302,22 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
     // Load on EACH database shard (rows and requests are split S ways)
     const dbLookups = f.dbReads + f.codeChecks;
     loads.db = {
-      cpu: { base: 0, perUser: (dbLookups * (p.dbReadCost + scanCpu) + f.dbWrites * (0.3 + (fixes.index ? 0.05 : 0))) / S },
+      cpu: { base: 0, perUser: (dbLookups * (p.dbReadCost + scanCpu) + f.dbWrites * (0.3 + (fixes.index ? 0.05 : 0)) + extraDb.cpu) / S },
       ram: { base: 300 + 300 * N, perUser: 0 }, // a connection pool per app server
-      storage: { base: 0, perUser: (dbLookups * diskPerRead + f.dbWrites * diskPerWrite) / S },
-      network: { base: 0, perUser: (f.dbReads * (1 + ENTRY_KB * f.R) + f.codeChecks + f.dbWrites) / S }
+      storage: { base: 0, perUser: (dbLookups * diskPerRead + f.dbWrites * diskPerWrite + extraDb.storage) / S },
+      network: { base: 0, perUser: (f.dbReads * (1 + ENTRY_KB * f.R) + f.codeChecks + f.dbWrites + extraDb.network) / S }
     };
   }
 
+  if (m.blob && !f.file) {
+    // Data lake: raw events archived in big files for batch jobs (reconciliation)
+    loads.blob = {
+      cpu: { base: 0, perUser: f.archived * 0.004 + (fixes.reconcile ? f.archived * 0.004 : 0) },
+      ram: { base: 300, perUser: 0 },
+      storage: { base: 0, perUser: f.archived * 0.004 },
+      network: { base: 0, perUser: f.archived * 0.1 }
+    };
+  }
   if (m.web) {
     loads.web = {
       cpu: { base: 0, perUser: f.pagesOrigin * 0.2 },
@@ -299,10 +351,11 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
       network: { base: 0, perUser: f.lists * 3 }
     } : {
       // writes invalidate cached pages; fan-out pushes post IDs into feed lists
-      cpu: { base: 0, perUser: f.readsOrigin * 0.03 + f.w * 0.02 + f.fanoutWrites * 0.01 + f.mergeReads * 0.01 },
-      ram: { base: 500, perUser: 0.2 }, // the hot entries, plus a little per user
+      // searches are cached by their parameters; dedup checks "seen this impression ID?"
+      cpu: { base: 0, perUser: f.readsOrigin * 0.03 + f.w * 0.02 + f.fanoutWrites * 0.01 + f.mergeReads * 0.01 + (f.searches || 0) * 0.03 + (f.dedupLookups || 0) * 0.03 },
+      ram: { base: 500, perUser: 0.2 + (f.dedupLookups || 0) * 2 }, // the hot entries, plus a little per user
       storage: { base: 0, perUser: 0 },
-      network: { base: 0, perUser: f.readsOrigin * f.cacheHit * f.respKB + f.fanoutWrites * 0.1 + f.mergeReads * 0.5 }
+      network: { base: 0, perUser: f.readsOrigin * f.cacheHit * f.respKB + f.fanoutWrites * 0.1 + f.mergeReads * 0.5 + (f.searches || 0) * 2 + (f.dedupLookups || 0) * 0.2 }
     };
   }
   if (m.cdn) {
@@ -328,10 +381,12 @@ function buildLoads(m, appCount, shards, entries, fixes, p, f) {
     // Click events are appended to a log and read by a consumer in batches
     loads.queue = {
       // Fan-out jobs too: workers copy each post into its followers' feeds
-      cpu: { base: 0, perUser: f.queuedClicks * 0.012 + f.fanoutQueued * 0.004 },
-      ram: { base: 400, perUser: f.queuedClicks * 1 + f.fanoutQueued * 0.2 },
-      storage: { base: 0, perUser: f.queuedClicks * 0.02 + f.fanoutQueued * 0.005 }, // sequential appends are cheap
-      network: { base: 0, perUser: f.queuedClicks * 0.6 + f.fanoutQueued * 0.1 }
+      // A viral ad sends most clicks to ONE partition (hotMult); stream aggregation adds work per click;
+      // a waiting room keeps every queued fan in line and tells them their place
+      cpu: { base: 0, perUser: (f.queuedClicks * 0.012 + (f.streamWork || 0) * 0.006) * (f.hotMult || 1) + f.fanoutQueued * 0.004 + (f.rushQueued || 0) * 0.01 },
+      ram: { base: 400, perUser: f.queuedClicks * 1 + f.fanoutQueued * 0.2 + (f.rushQueued || 0) * 0.3 },
+      storage: { base: 0, perUser: f.queuedClicks * 0.02 + f.fanoutQueued * 0.005 + (f.rushQueued || 0) * 0.005 }, // sequential appends are cheap
+      network: { base: 0, perUser: f.queuedClicks * 0.6 + f.fanoutQueued * 0.1 + (f.rushQueued || 0) * 0.2 }
     };
   }
   return loads;
@@ -405,7 +460,11 @@ export function simulateSystem(state) {
   // hybrid fan-out: each feed read merges in celebrity posts
   const fanoutMs = (f.fanoutInline > 0 ? Math.min(FANOUT_WAIT_CAP, f.fanoutPerPost * FANOUT_WAIT_MS) : 0) + (f.mergeReads > 0 ? 3 : 0);
   const fileMs = f.file ? (f.bytesViaApp && m.blob ? 12 : 0) + (fixes.coldTier ? 5 : 0) + (fixes.compress ? 6 : 0) : 0;
-  const latency = Math.round(20 + hops + queryMs * dbShare + clickWaitMs + fileMs + fanoutMs + Math.max(0, peak - 0.7) * 400 + distance);
+  // Searches and dashboard queries: slow scans unless indexed / pre-aggregated
+  const apiAll = Math.max(1e-9, f.apiOrigin || 0);
+  const searchMs = f.searches ? (fixes.searchIndex ? 2 : Math.min(400, 5 + entries / 40)) * (f.searches / apiAll) * 4 : 0;
+  const reportMs = f.reports ? (f.rollups ? 2 : 100 * f.reportDbCost) * Math.min(1, (f.reports / apiAll) * 20) : 0;
+  const latency = Math.round(20 + hops + queryMs * dbShare + clickWaitMs + fileMs + fanoutMs + searchMs + reportMs + Math.max(0, peak - 0.7) * 400 + distance);
 
   // Errors: overloaded parts drop requests (out of RAM is worst); a full disk
   // fails every write; clashing short codes break new links; with every app
@@ -415,6 +474,7 @@ export function simulateSystem(state) {
   if (peak > 1) errorRate = (peak - 1) * (busiest.part === 'ram' ? 3 : 1.5);
   if (diskFull) errorRate += writeShare;
   errorRate += f.collisionShare * writeShare;
+  if (f.clashShare) errorRate += f.clashShare * writeShare;
   if (f.tooBig) errorRate += f.tooBig * writeShare;
   // Broken files fail when someone downloads them
   if (f.broken) errorRate += f.broken * (1 - writeShare) * 0.5;
@@ -448,7 +508,17 @@ export function simulateSystem(state) {
     brokenPerSec: users * f.wAll * f.collisionShare,
     collisionShare: f.collisionShare,
     // Share of real clicks your analytics actually sees
-    clickAccuracy: params.clickTracking ? (1 - (fixes.redirect301 ? BROWSER_CACHED : 0)) * (1 - errorRate) : null,
+    clickAccuracy: params.clickTracking ? Math.max(0, (1 - (fixes.redirect301 ? BROWSER_CACHED : 0)) * (1 - errorRate) * (1 - (f.lostClicks || 0)) - (f.dupCount || 0)) : null,
+    // Bookings: share that clash over one seat, searches, on-sale attempts, dashboard queries
+    clashShare: f.clashShare || 0,
+    clashPerSec: users * f.w * (f.clashShare || 0),
+    searchesPerSec: users * (f.searches || 0),
+    rushPerSec: users * (f.rush || 0),
+    rushQueuedPerSec: users * (f.rushQueued || 0),
+    reportsPerSec: users * (f.reports || 0),
+    dupClickShare: f.dupCount || 0,
+    lostClickShare: f.lostClicks || 0,
+    searchMs, reportMs,
     cacheHit: f.cacheHit,
     edgeHit: f.edgeHit,
     rowsReturned: f.R,
@@ -488,15 +558,15 @@ export function simulateSystem(state) {
       readsOrigin: users * f.readsOrigin, // reads reaching your servers
       pagesOrigin: users * f.pagesOrigin, // page views reaching the web/app server
       apiOrigin: users * f.apiOrigin,     // API calls reaching the app servers
-      dbReads: users * (f.dbReads + f.codeChecks), // lookups reaching the database
+      dbReads: users * (f.dbReads + f.codeChecks + (f.searchesDb || 0) + (f.rushDirect || 0) + (f.reports || 0)), // lookups reaching the database
       dbWrites: users * f.dbWrites,       // writes reaching the database
       idRequests: users * f.idRequests,   // calls to the ID generator
-      queued: users * f.queuedClicks,     // click events into the queue
+      queued: users * (f.queuedClicks + (f.rushQueued || 0)),     // click events into the queue
       batchWrites: users * f.queuedClicks / CLICK_BATCH,
       collisionShare: f.collisionShare,
       file: Boolean(f.file),
       bytesViaApp: Boolean(f.bytesViaApp),
-      blobIn: users * (f.file ? f.readsOrigin + f.wAll : 0),
+      blobIn: users * (f.file ? f.readsOrigin + f.wAll : (f.archived || 0)),
       polls: users * (f.polls || 0),
       pushes: users * (f.pushes || 0),
       devices: users * (params.devicesPerUser || 0),
