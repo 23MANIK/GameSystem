@@ -240,6 +240,77 @@ export const CODE_FIXES = {
     short: 'Answer with "301 Moved Permanently" instead of "302 Found". Browsers remember a 301 and go straight to the long URL next time.',
     effect: 'About 40% of clicks never reach you: less load. But you never see those clicks, so analytics lose them. Switch it on or off any time.',
     info: 'redirect301'
+  },
+  // ─── AI agents ───
+  compaction: {
+    id: 'compaction',
+    name: 'Summarize old messages',
+    icon: '🗜️',
+    cost: 700,
+    unlockLevel: Infinity,
+    short: 'Instead of sending the whole chat with every question, keep the last few messages and a short summary of the rest (compaction).',
+    effect: 'Prompts get about 65% smaller: fewer tokens per answer, a smaller bill and faster answers. The agent still remembers what matters.',
+    info: 'compaction'
+  },
+  rerank: {
+    id: 'rerank',
+    name: 'Rerank search results',
+    icon: '🥇',
+    cost: 1200,
+    unlockLevel: Infinity,
+    short: 'Fetch the top 20 matching chunks, then let a reranker pick the best few. Only those go into the prompt.',
+    effect: 'Far fewer wrong or made-up answers (Anthropic measured 67% fewer failed lookups), and fewer document tokens per prompt. The knowledge base does more work per search.',
+    info: 'rerank'
+  },
+  maxSteps: {
+    id: 'maxSteps',
+    name: 'Step limit for the agent loop',
+    icon: '🛑',
+    cost: 600,
+    unlockLevel: Infinity,
+    short: 'Stop any task after a few rounds of "think, use a tool, look at the result" and hand it to a person.',
+    effect: 'A stuck agent can no longer burn thousands of tokens in a loop. Normal tasks finish as before.',
+    info: 'maxSteps'
+  },
+  tokenBudget: {
+    id: 'tokenBudget',
+    name: 'Token budget per user',
+    icon: '🎟️',
+    cost: 900,
+    unlockLevel: Infinity,
+    short: 'Each user gets a daily token allowance. Scripts and power users that fire questions nonstop are slowed down once it runs out.',
+    effect: 'One heavy user can no longer eat the whole plan\'s limit. About 90% of their extra questions are turned away.',
+    info: 'tokenBudget'
+  },
+  promptCache: {
+    id: 'promptCache',
+    name: 'Prompt caching',
+    icon: '♻️',
+    cost: 1000,
+    unlockLevel: Infinity,
+    short: 'Mark the part of the prompt that repeats (instructions, tool list, older chat) as cacheable. The provider keeps it ready between calls.',
+    effect: 'Cached tokens cost 10% of the normal price, don\'t count toward your tokens-per-minute limit, and are read much faster.',
+    info: 'promptCache'
+  },
+  routing: {
+    id: 'routing',
+    name: 'Route easy questions to a small model',
+    icon: '🔀',
+    cost: 1200,
+    unlockLevel: Infinity,
+    short: 'A quick check sorts each question: easy ones ("opening hours?") go to a small, fast, cheap model; hard ones to the big model.',
+    effect: 'Most questions cost about a third and come back about twice as fast. Answer quality drops a tiny bit.',
+    info: 'routing'
+  },
+  humanApproval: {
+    id: 'humanApproval',
+    name: 'Human approval for refunds',
+    icon: '🙋',
+    cost: 800,
+    unlockLevel: Infinity,
+    short: 'Before the agent runs a risky tool that can\'t be undone (a refund over $50), it pauses and a person approves it.',
+    effect: 'Even a tricked agent can\'t give away money. A few refunds take a little longer.',
+    info: 'humanApproval'
   }
 };
 

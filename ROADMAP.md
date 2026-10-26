@@ -12,6 +12,7 @@ Before the game starts, the player picks **one product** to build. Each product 
 | Cloud Drive | Google Drive, Dropbox | Levels 1–11 playable |
 | Ticket Booking (medium) | Ticketmaster | Levels 1–8 playable |
 | Ad Click Aggregator (hard) | Google Ads reporting | Levels 1–9 playable |
+| AI Support Agent (medium) | a shop's AI helper | Levels 1–9 playable |
 | Chat App | WhatsApp, Messenger | Locked |
 | Video Streaming | YouTube | Locked |
 | Ride Hailing | Uber | Locked |
@@ -34,6 +35,7 @@ Before the game starts, the player picks **one product** to build. Each product 
 
 ## Done
 - **Create DesignGame (branch v3).** Name a system; Claude researches it, builds levels as a data pack, test-plays them and the game shows up under Community games. Passcode-only creation. See `docs/designgame/README.md`.
+- **AI Support Agent (9 levels)**: how agent systems work, from Anthropic's agent and multi-agent write-ups, the Claude API rate-limit and prompt-caching docs, a semantic-cache paper and the OWASP LLM Top 10. New machines: AI Model (its parts are API plan limits), knowledge base, tool server, guardrail, orchestrator, with 3D buildings and a dedicated map layout. New simulation in `js/game/AgentSim.js` (tokens, the agent loop, rate limits, token bill, answer quality, prompt injection) and seven code fixes. Design doc and pack report in `docs/products/ai-agent*.md`.
 - **Ticket Booking (8 levels) and Ad Click Aggregator (9 levels)**, from the Hello Interview breakdowns. New generic mechanics: seat holds (`clashShare`), search (`searchPerUser`), waiting room (`rushPerUser`), dashboard queries (`reportPerUser`), duplicate / lost / hot clicks (`dupShare`, `lossShare`, `hotShare`), and six code fixes. Design docs and pack reports in `docs/products/ticketing*.md` and `docs/products/ad-clicks*.md`.
 - **Guestbook, 7 levels.** Each adds one piece and one difficulty:
 

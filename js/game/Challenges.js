@@ -6,6 +6,8 @@
  * so a dip afterwards doesn't take it away.
  */
 
+import { ROLES } from '../data/roles.js';
+
 export const GUESTBOOK_CHALLENGES = {
   1: [
     {
@@ -215,7 +217,7 @@ export function placedChallenge(role, icon, label, hint) {
   return {
     id: `place-${role}`,
     icon,
-    info: { db: 'database', web: 'webServer', gateway: 'gateway', lb: 'loadBalancer', cache: 'cache', cdn: 'cdn', idgen: 'idGenerator', queue: 'messageQueue', blob: 'blobStorage', sync: 'syncServer' }[role],
+    info: { db: 'database', web: 'webServer', gateway: 'gateway', lb: 'loadBalancer', cache: 'cache', cdn: 'cdn', idgen: 'idGenerator', queue: 'messageQueue', blob: 'blobStorage', sync: 'syncServer' }[role] ?? ROLES[role]?.info,
     label,
     hint,
     progress: gs => ({ value: gs.isPlaced(role) ? 1 : 0, target: 1, unit: '', display: gs.isPlaced(role) ? 'Done' : 'Not built yet' })
@@ -254,7 +256,7 @@ export function incidentChallenge(kind, override = {}) {
     crash: ['💥', 'horizontalScaling', 'Survive an app server crash (under 5% failed requests)', 'When one app server dies, the load balancer sends its users to the others. They need enough spare room to take the extra load.', 'crashHandled', 'Waiting for a crash']
   }[kind];
   const [icon, info, label, hint, key, waiting] = text;
-  return buildIncident(kind, icon, info, override.label || label, override.hint || hint, key, waiting);
+  return buildIncident(kind, override.icon || icon, override.info || info, override.label || label, override.hint || hint, key, waiting);
 }
 
 function buildIncident(kind, icon, info, label, hint, key, waiting) {

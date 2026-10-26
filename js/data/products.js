@@ -12,6 +12,7 @@ import { CLOUD_DRIVE_LEVELS } from '../products/cloudDrive/levels.js';
 import { NEWS_FEED_LEVELS } from '../products/newsFeed/levels.js';
 import { TICKETING_LEVELS } from '../products/ticketing/levels.js';
 import { AD_CLICKS_LEVELS } from '../products/adClicks/levels.js';
+import { AI_AGENT_LEVELS } from '../products/aiAgent/levels.js';
 
 const levelList = levels => levels.map(l => ({ level: l.level, name: l.name, focus: l.subtitle, playable: !l.comingSoon }));
 
@@ -82,6 +83,17 @@ export const PRODUCTS = [
     concepts: ['Message queues / streams', 'Stream aggregation', 'Idempotency / dedup', 'Hot partitions', 'Lambda architecture', 'Sharding'],
     playable: true,
     levels: levelList(AD_CLICKS_LEVELS)
+  },
+  {
+    id: 'ai_agent',
+    difficulty: 'medium',
+    name: 'AI Support Agent',
+    likeWhat: 'like a shop\'s AI helper',
+    icon: '🤖',
+    tagline: 'Build the AI helper of an online shop and learn how agent systems work: an LLM API, memory, a knowledge base (RAG), tools and the agent loop, rate limits, token costs, guardrails and helper agents.',
+    concepts: ['LLM APIs and tokens', 'Memory and RAG', 'Tools and the agent loop', 'Rate limits and queues', 'Caching to cut cost', 'Guardrails / prompt injection', 'Multi-agent orchestration'],
+    playable: true,
+    levels: levelList(AI_AGENT_LEVELS)
   },
   {
     id: 'chat',

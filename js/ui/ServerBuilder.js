@@ -10,7 +10,7 @@ import {
   runningCostPerMinute, optionsForLevel
 } from '../data/serverParts.js';
 import { fixesForLevel, CODE_FIXES } from '../data/codeFixes.js';
-import { ROLES } from '../data/roles.js';
+import { ROLES, partView, optionView } from '../data/roles.js';
 import { scaleOutRule, vocab } from '../products/registry.js';
 import { simulateSystem, limitForOption } from '../game/SystemSimulator.js';
 import { getSteps } from '../game/Tutorial.js';
@@ -247,12 +247,13 @@ export default class ServerBuilder {
     const spaceMult = this.role === 'db' ? Math.max(1, gs.machineCount('db')) : 1;
 
     return PART_ORDER.map(partId => {
-      const part = SERVER_PARTS[partId];
+      const part = partView(this.role, SERVER_PARTS[partId]);
       const options = optionsForLevel(partId, gs.level);
       const installedIdx = installed ? getOptionIndex(partId, installed[partId]) : -1;
 
       const cards = options.map(opt => {
         const idx = getOptionIndex(partId, opt.id);
+        const shown = optionView(this.role, partId, opt, idx);
         const selected = this.selection[partId] === opt.id;
         const isInstalled = installedIdx === idx;
         const disabled = installedIdx > idx; // no downgrades
@@ -267,8 +268,8 @@ export default class ServerBuilder {
         return `
           <button class="sb-option${selected ? ' selected' : ''}${isInstalled ? ' installed' : ''}${opt.unlockLevel ? ' xl' : ''}"
             data-part="${partId}" data-option="${opt.id}" ${disabled ? 'disabled' : ''}>
-            <span class="sb-option-label">${opt.label}</span>
-            <span class="sb-option-spec">${opt.spec}</span>
+            <span class="sb-option-label">${shown.label}</span>
+            <span class="sb-option-spec">${shown.spec}</span>
             <span class="sb-option-users">${users === Infinity ? 'not a limit' : `~${users.toLocaleString()} users`}</span>
             ${space}
             <span class="sb-option-cost">${price}</span>
@@ -281,7 +282,7 @@ export default class ServerBuilder {
           <div class="sb-part-head">
             <span class="sb-part-icon">${part.icon}</span>
             <div>
-              <h4 class="sb-part-name">${part.name} ${infoButton(partId)} ${extraInfo}</h4>
+              <h4 class="sb-part-name">${part.name} ${infoButton(part.info || partId)} ${extraInfo}</h4>
               <p class="sb-part-desc">${part.whatItDoes}</p>
               ${partId === 'storage' && holdsData && gs.hasDatabaseLevel() ? `<p class="sb-part-desc sb-part-tradeoff">Speed and size trade off: <strong>HDD</strong> is big but slow, <strong>SSD</strong> is 10× faster but holds a quarter as much, <strong>NVMe</strong> is fastest and mid-size. Check the disk still fits your ${vocab('records')} before you switch.</p>` : ''}
             </div>
@@ -393,7 +394,7 @@ export default class ServerBuilder {
     if (!el) return;
     const gs = this.gameState;
     const status = simulateSystem(this.previewInput());
-    const bottleneck = SERVER_PARTS[status.bottleneck];
+    const bottleneck = partView(status.bottleneckRole, SERVER_PARTS[status.bottleneck]);
     const several = Object.keys(status.servers).length > 1;
     const cost = this.getCost();
     const canAfford = gs.coins >= cost;
@@ -474,7 +475,7 @@ export default class ServerBuilder {
 
     this.close();
     if (wasUpgrade) {
-      const names = changedParts.map(id => `${SERVER_PARTS[id].short} → ${getOption(id, this.selection[id]).label}`);
+      const names = changedParts.map(id => `${partView(role, SERVER_PARTS[id]).short} → ${optionView(role, id, getOption(id, this.selection[id]), getOptionIndex(id, this.selection[id])).label}`);
       const who = this.gameState.hasDatabaseLevel() ? `${ROLES[role].name}: ` : '';
       this.notifications?.show(`⬆️ ${who}upgraded ${names.join(', ')}. New limit: ~${this.gameState.serverStatus.userLimit} users`, 'success', 4000);
     }

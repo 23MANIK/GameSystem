@@ -18,6 +18,7 @@ import { simulateSystem } from '../../js/game/SystemSimulator.js';
 import * as SP from '../../js/data/serverParts.js';
 import { ROLES, rolesForLevel } from '../../js/data/roles.js';
 import { fixesForLevel } from '../../js/data/codeFixes.js';
+import { AGENT_DEFAULTS } from '../../js/game/AgentSim.js';
 
 
 
@@ -25,7 +26,8 @@ export const PARAM_KEYS = ['readsPerUser', 'writesPerUser', 'pageViewsPerUser', 
   'globalShare', 'distanceMs', 'dbReadCost', 'readKind', 'cacheHitRate', 'edgeHitRate', 'clickTracking', 'keepRecords', 'appCallCost', 'shardIdClash', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult',
   'readKB', 'writeKB', 'recordSpace', 'blobSpaceMult', 'bigFileShare', 'dedupShare', 'updateShare', 'devicesPerUser',
   'pollPerDevice', 'listReadsPerUser', 'conflictShare', 'publicShare', 'unverifiedShare', 'browsePerUser',
-  'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare'];
+  'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare',
+  ...Object.keys(AGENT_DEFAULTS)];
 
 function params(L) {
   const p = {};
@@ -73,9 +75,9 @@ function solve(L, roles, { appCount = 1, dbCount = 1, entries, fixes, target }) 
   return { m, s, ok: false };
 }
 
-function cost(m, appCount, dbCount) {
+function cost(m, appCount, dbCount, s) {
   let price = 0;
-  let run = 0;
+  let run = Math.round(s?.tokenBillPerMin || 0);   // usage bills (an AI model's tokens)
   for (const [r, c] of Object.entries(m)) {
     const n = r === 'app' ? appCount : r === 'db' ? dbCount : 1;
     price += SP.serverCost(c) * n;
@@ -94,7 +96,7 @@ function best(L, roles, base) {
   for (let a = 1; a <= appMax; a++) {
     for (let d = 1; d <= dbMax; d++) {
       const res = solve(L, roles, { ...base, appCount: a, dbCount: d });
-      const c = cost(res.m, a, d);
+      const c = cost(res.m, a, d, res.s);
       // Cheapest that works; if none works, the one that gets closest (so the
       // report names the real limit, not the cheapest broken setup)
       const score = res.ok ? c.run : 1e12 - Math.min(res.s.userLimit, 1e8) * 1e3 + c.run;
@@ -104,11 +106,22 @@ function best(L, roles, base) {
   return pick;
 }
 
+/** AI agents: wrong answers, unsafe actions, slow research jobs, a bill bigger than the income. */
+function agentFlags(s, r, L, revenue) {
+  return [
+    s.answerQuality != null && s.answerQuality < 0.9 ? `answers ${Math.round(s.answerQuality * 100)}%` : '',
+    s.badActionsPerSec > 0 ? 'UNSAFE' : '', s.attacksPerSec > 0 && !s.attacksBlockedPerSec ? 'TRICKED' : '',
+    s.researchSec > 45 ? `SLOW JOBS ${Math.round(s.researchSec)}s` : '',
+    s.answerQuality != null && r.run > revenue * 0.8 ? 'LOSS' : '',
+    L.billTarget && s.billPer1k > L.billTarget ? `COSTLY ${s.billPer1k}/1k` : ''
+  ].filter(Boolean);
+}
+
 function line(label, r, L) {
   if (!r) return `  ${label}: –`;
   const s = r.s;
   const revenue = Math.round(L.userTarget / 100 * (L.coinRate || 25) * 30);
-  const flags = [s.diskFull ? 'DISK FULL' : '', s.collisionShare ? 'CODE CLASHES' : '', s.clashShare ? 'DOUBLE BOOKINGS' : '', s.clickAccuracy != null && s.clickAccuracy < 0.95 ? `clicks ${Math.round(s.clickAccuracy * 100)}%` : ''].filter(Boolean).join(' ');
+  const flags = [s.diskFull ? 'DISK FULL' : '', s.collisionShare ? 'CODE CLASHES' : '', s.clashShare ? 'DOUBLE BOOKINGS' : '', s.clickAccuracy != null && s.clickAccuracy < 0.95 ? `clicks ${Math.round(s.clickAccuracy * 100)}%` : '', ...agentFlags(s, r, L, revenue)].filter(Boolean).join(' ');
   return `  ${label.padEnd(12)} ${r.ok ? 'OK  ' : 'FAIL'} limit ${String(s.userLimit).padStart(6)}  runs out: ${(s.bottleneckRole + '.' + s.bottleneck).padEnd(14)} latency ${String(s.latency).padStart(4)} ms  `
     + `buy ${String(r.price).padStart(6)}  run ${String(r.run).padStart(5)}/min  revenue ~${revenue}/min  apps ${r.apps} shards ${r.shards} ${flags}`;
 }
@@ -123,7 +136,8 @@ function row(label, r, L) {
     apps: r.apps, shards: r.shards, diskFull: Boolean(s.diskFull), clashes: Boolean(s.collisionShare),
     clickAccuracy: s.clickAccuracy ?? null,
     // The level still "breaks" without this piece
-    broken: !r.ok || Boolean(s.diskFull) || Boolean(s.collisionShare) || Boolean(s.clashShare) || (s.clickAccuracy != null && s.clickAccuracy < 0.95),
+    broken: !r.ok || Boolean(s.diskFull) || Boolean(s.collisionShare) || Boolean(s.clashShare) || (s.clickAccuracy != null && s.clickAccuracy < 0.95)
+      || agentFlags(s, r, L, Math.round(L.userTarget / 100 * (L.coinRate || 25) * 30)).length > 0,
     text: line(label, r, L)
   };
 }
