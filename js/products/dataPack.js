@@ -505,6 +505,7 @@ export function productEntry(pack) {
     icon: pack.meta.icon,
     tagline: pack.meta.tagline,
     concepts: pack.meta.concepts,
+    difficulty: pack.meta.difficulty,
     playable: true,
     generated: true,
     levels: pack.levels.map(l => ({ level: l.level, name: l.name, focus: l.subtitle, playable: !l.comingSoon }))

@@ -3,6 +3,7 @@
  * Each is a classic system design problem. Only playable levels can be started;
  * everything else shows as locked until it is built.
  * Playable products take their level list from their pack (js/products/).
+ * difficulty ('easy' | 'medium' | 'hard') is shown on the picker card.
  */
 
 import { GUESTBOOK_LEVELS } from './levels.js';
@@ -15,6 +16,7 @@ const levelList = levels => levels.map(l => ({ level: l.level, name: l.name, foc
 export const PRODUCTS = [
   {
     id: 'guestbook',
+    difficulty: 'easy',
     name: 'Guestbook',
     likeWhat: 'Tutorial',
     icon: '📖',
@@ -26,6 +28,7 @@ export const PRODUCTS = [
   },
   {
     id: 'url_shortener',
+    difficulty: 'easy',
     name: 'URL Shortener',
     likeWhat: 'like bit.ly',
     icon: '🔗',
@@ -36,6 +39,7 @@ export const PRODUCTS = [
   },
   {
     id: 'news_feed',
+    difficulty: 'medium',
     name: 'News Feed',
     likeWhat: 'like Twitter / Instagram',
     icon: '📰',
@@ -46,6 +50,7 @@ export const PRODUCTS = [
   },
   {
     id: 'cloud_drive',
+    difficulty: 'hard',
     name: 'Cloud Drive',
     likeWhat: 'like Google Drive',
     icon: '☁️',
@@ -56,6 +61,7 @@ export const PRODUCTS = [
   },
   {
     id: 'chat',
+    difficulty: 'medium',
     name: 'Chat App',
     likeWhat: 'like WhatsApp',
     icon: '💬',
@@ -69,6 +75,7 @@ export const PRODUCTS = [
   },
   {
     id: 'video',
+    difficulty: 'hard',
     name: 'Video Streaming',
     likeWhat: 'like YouTube',
     icon: '🎬',
@@ -82,6 +89,7 @@ export const PRODUCTS = [
   },
   {
     id: 'ride_hailing',
+    difficulty: 'hard',
     name: 'Ride Hailing',
     likeWhat: 'like Uber',
     icon: '🚕',

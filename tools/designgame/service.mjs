@@ -127,6 +127,7 @@ function summary(data, isPublic) {
     likeWhat: data.meta.likeWhat || '',
     tagline: data.meta.tagline,
     concepts: data.meta.concepts || [],
+    difficulty: data.meta.difficulty,
     levels: data.levels.map(L => ({ level: L.level, name: L.name, focus: L.subtitle })),
     createdAt: data.generated?.at || new Date().toISOString(),
     public: Boolean(isPublic)
