@@ -1,0 +1,16 @@
+{
+  "name": "scale-architect",
+  "private": true,
+  "type": "module",
+  "description": "Scale Architect: a system design strategy game. The game itself has no build step; this file only holds the test tools.",
+  "scripts": {
+    "test": "bash tools/test-all.sh",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:checks": "node tools/run-tests.mjs",
+    "test:e2e": "playwright test",
+    "serve": "node tools/static-server.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
