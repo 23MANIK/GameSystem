@@ -453,7 +453,7 @@ class ScaleArchitect {
       gs.snapshotLevelStart();
       this.guide.render();
       this.startGameLoop();
-    });
+    }, () => this.goHome());
   }
 
   /** Phones: drag a bottom sheet down by its header; far enough closes it. */

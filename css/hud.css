@@ -197,7 +197,20 @@ body.level-intro-open .guide-bubble { display: none !important; }
   from { opacity: 0; transform: translateY(16px) scale(0.96); }
   to { opacity: 1; transform: none; }
 }
-.li-top { align-self: stretch; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+.li-top { align-self: stretch; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); }
+.li-product { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.li-back {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-glass-bright);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary, var(--text-primary));
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.li-back:hover, .li-back:focus-visible { border-color: var(--accent-cyan-border); background: var(--accent-cyan-dim); color: var(--text-primary); }
 .li-step { font-family: var(--font-mono); }
 .li-badge {
   display: grid;
