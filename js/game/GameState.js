@@ -1126,6 +1126,16 @@ export default class GameState {
     this.tutorial = { step: 0, done: false };
     this.unlockedFeatures = [...new Set([...this.unlockedFeatures, ...(this.levelDef().unlockedFeatures || [])])];
     this.recalculateMetrics();
+    // The new level's traffic (bots, bigger pages...) can shrink what the system
+    // handles. Don't open the level already overloaded: start just under the new limit.
+    const limit = this.serverStatus?.userLimit;
+    this.levelStartTrim = null;
+    if (limit && this.users > limit) {
+      const kept = Math.max(10, Math.floor(limit * 0.9));
+      this.levelStartTrim = { from: this.users, to: kept };
+      this.users = kept;
+      this.recalculateMetrics();
+    }
     this.save();
     this.emit('levelStarted', { level });
   }

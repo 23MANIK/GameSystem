@@ -1382,3 +1382,5 @@
   margin-bottom: var(--space-4);
   box-shadow: 0 -12px 24px 8px rgba(5, 8, 15, 0.92);
 }
+.sb-option-space.sb-option-too-small { color: var(--accent-red, #ef476f); font-weight: 600; }
+.sb-part-tradeoff { margin-top: 4px; color: var(--accent-amber); }

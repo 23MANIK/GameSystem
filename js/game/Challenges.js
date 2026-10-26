@@ -141,7 +141,7 @@ export const GUESTBOOK_CHALLENGES = {
     usersChallenge(600, 'Bots eat CPU and bandwidth that real users need. Block them first, then grow.'),
     {
       id: 'clean-errors',
-      icon: '✅',
+      icon: '🛡️',
       info: 'uptime',
       label: 'Under 1% failed requests with 600+ users',
       hint: 'Real users should barely notice the bots. If errors stay high, check which machine runs out first.',

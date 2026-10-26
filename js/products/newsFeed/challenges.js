@@ -70,7 +70,7 @@ export const NEWS_FEED_CHALLENGES = {
     },
     {
       id: 'clean-errors',
-      icon: '✅',
+      icon: '🛡️',
       info: 'uptime',
       label: 'Under 1% failed requests with 550+ users',
       hint: 'If errors stay high, check the disk (spam fills it) and which machine runs out first.',

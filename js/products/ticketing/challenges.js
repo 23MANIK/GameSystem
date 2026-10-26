@@ -31,7 +31,7 @@ function fixOwned(id, icon, info, label, hint) {
 function safeBookings(target, hint) {
   return {
     id: 'safe-bookings',
-    icon: '✅',
+    icon: '🎫',
     info: 'holds',
     label: `Make ${target.toLocaleString()} bookings with no seat sold twice`,
     hint,
@@ -57,7 +57,7 @@ function dbCpuUnder(pct, users, info, hint) {
 function cleanRequests(users, hint) {
   return {
     id: 'clean-errors',
-    icon: '✅',
+    icon: '🛡️',
     info: 'uptime',
     label: `Under 1% failed requests with ${users.toLocaleString()}+ users`,
     hint,
@@ -163,7 +163,7 @@ export const TICKETING_CHALLENGES = {
   ],
 
   8: [
-    placedChallenge('queue', '🚪', 'Open a virtual waiting room', 'Open Server → Queue tab and place it. Fans wait in line and are let in to book a batch at a time.'),
+    placedChallenge('queue', '🚪', 'Open a virtual waiting room', 'Open Server → Waiting room tab and place it. Fans wait in line and are let in to book a batch at a time.'),
     {
       id: 'queued-fans',
       icon: '🧍',

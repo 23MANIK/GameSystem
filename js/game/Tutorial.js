@@ -315,7 +315,14 @@ export default class Tutorial {
    * happened.) Steps with a button are never skipped.
    */
   isStepDone(step) {
-    if (!step || step.button) return false;
+    if (!step) return false;
+    if (step.button) {
+      // A plain "read this" step is pointless once the player has already done
+      // what the next step asks (e.g. bought the database before pressing "Show me")
+      if (step.onButton || step.minimizeAfterButton || step.finishAfterButton) return false;
+      const nextStep = this.steps[this.steps.indexOf(step) + 1];
+      return Boolean(nextStep && !nextStep.button && this.isStepDone(nextStep));
+    }
     const gs = this.gameState;
     const checks = {
       serverBought: () => Boolean(gs.server),
@@ -374,7 +381,11 @@ export default class Tutorial {
 
   handleEvent(evt, data) {
     if (!this.active || !this.step) return;
-    if (![].concat(this.step.advanceOn || []).includes(evt)) return;
+    if (![].concat(this.step.advanceOn || []).includes(evt)) {
+      // The player may be ahead of the guide: skip what they already did
+      this.autoAdvance();
+      return;
+    }
     if (evt === 'entryWritten' && !data?.isPlayer) return;
     this.next(data);
     // The step after it may already be done too
