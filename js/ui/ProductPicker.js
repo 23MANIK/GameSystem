@@ -9,31 +9,34 @@ import { listGames, ensureGame } from '../designgame/client.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/** One product card. Generated games' text is already cleaned (dataPack.js), but summaries from the list are escaped here. */
+const DIFFICULTY = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+
+/** A product's difficulty: its own, else guessed from how many levels it has. */
+export function difficultyOf(p) {
+  if (DIFFICULTY[p.difficulty]) return p.difficulty;
+  const n = (p.levels || []).length;
+  return n <= 5 ? 'easy' : n <= 8 ? 'medium' : 'hard';
+}
+
+/**
+ * One small card: icon, name and difficulty. The whole card is the play button.
+ * Generated games' text is already cleaned (dataPack.js), but summaries from the list are escaped here.
+ */
 function card(p, { community = false, clean = false } = {}) {
   const t = community && !clean ? esc : (s => s);
-  const levels = p.levels.map(l => `
-    <li class="pp-level${l.playable !== false ? ' open' : ''}" title="${t(l.focus)}">
-      ${l.playable !== false ? '' : '🔒 '}Lv.${l.level} ${t(l.name)}
-    </li>`).join('');
   const playable = community || p.playable;
+  const d = difficultyOf(p);
   return `
-    <article class="pp-card${playable ? '' : ' locked'}${community ? ' pp-community' : ''}" data-product="${t(p.id)}">
-      <div class="pp-card-head">
-        <span class="pp-icon">${t(p.icon)}</span>
-        <div>
-          <h3 class="pp-name">${t(p.name)}</h3>
-          <span class="pp-like">${t(p.likeWhat)}</span>
-        </div>
-        ${playable ? (community ? '<span class="pp-lock pp-badge">✨ Made with Claude</span>' : '') : '<span class="pp-lock">🔒 Coming soon</span>'}
-      </div>
-      <p class="pp-tagline">${t(p.tagline)}</p>
-      <div class="pp-concepts">${(p.concepts || []).map(c => `<span>${t(c)}</span>`).join('')}</div>
-      <ul class="pp-levels">${levels}</ul>
-      <button class="btn ${playable ? 'btn-primary' : 'btn-secondary'} pp-play" data-product="${t(p.id)}"${community ? ' data-community="1"' : ''} ${playable ? '' : 'disabled'}>
-        ${playable ? '▶ Play from Level 1' : 'Locked'}
-      </button>
-    </article>`;
+    <button type="button" class="pp-card pp-play${playable ? '' : ' locked'}${community ? ' pp-community' : ''}" data-product="${t(p.id)}"${community ? ' data-community="1"' : ''} ${playable ? '' : 'disabled'}
+      aria-label="${t(p.name)}, ${DIFFICULTY[d]}${playable ? '' : ', coming soon'}">
+      <span class="pp-icon" aria-hidden="true">${t(p.icon)}</span>
+      <span class="pp-name">${t(p.name)}</span>
+      <span class="pp-tags">
+        <span class="pp-diff pp-diff-${d}">${DIFFICULTY[d]}</span>
+        ${playable ? '' : '<span class="pp-lock">🔒 Soon</span>'}
+        ${community ? '<span class="pp-lock pp-badge">✨ Claude</span>' : ''}
+      </span>
+    </button>`;
 }
 
 export default class ProductPicker {
@@ -63,11 +66,11 @@ export default class ProductPicker {
           <p class="pp-sub">Games Claude made from a prompt: it researched how each system is really built and test-played every level.</p>
           <div class="pp-grid" id="pp-community">
             ${onCreate ? `
-            <article class="pp-card pp-create" id="pp-create" tabindex="0" role="button">
-              <div class="pp-card-head"><span class="pp-icon">✨</span><div><h3 class="pp-name">Create DesignGame</h3><span class="pp-like">Name a system, get a game · invite only</span></div></div>
-              <p class="pp-tagline">Type what to design (ride hailing, payments, a chat app…). Claude researches it, builds the levels and tests them.</p>
-              <button class="btn btn-secondary pp-play" type="button">+ Create a game</button>
-            </article>` : ''}
+            <button type="button" class="pp-card pp-create" id="pp-create" aria-label="Create DesignGame">
+              <span class="pp-icon" aria-hidden="true">✨</span>
+              <span class="pp-name">Create DesignGame</span>
+              <span class="pp-tags"><span class="pp-lock pp-badge">+ New</span></span>
+            </button>` : ''}
             <p class="pp-loading" id="pp-loading">Loading…</p>
           </div>
         </section>
@@ -79,13 +82,16 @@ export default class ProductPicker {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.product;
         if (btn.dataset.community) {
+          const tag = btn.querySelector('.pp-diff');
+          const label = tag.textContent;
           btn.disabled = true;
-          btn.textContent = 'Loading…';
+          tag.textContent = 'Loading…';
           if (!(await ensureGame(id))) {
-            btn.textContent = 'Couldn\'t load it. Try again';
+            tag.textContent = 'Couldn\'t load. Tap to retry';
             btn.disabled = false;
             return;
           }
+          tag.textContent = label;
         }
         this.close();
         onPick(id);
@@ -97,7 +103,6 @@ export default class ProductPicker {
     if (create) {
       const go = () => { this.close(); onCreate(); };
       create.addEventListener('click', go);
-      create.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
     }
     this.el.querySelector('#pp-back').addEventListener('click', () => {
       this.close();

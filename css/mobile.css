@@ -146,8 +146,8 @@
 
   /* --- Product picker --- */
   .pp-inner { padding: 16px 12px calc(16px + var(--safe-bottom)); }
-  .pp-grid { grid-template-columns: 1fr; }
-  .pp-play { min-height: 48px; }
+  .pp-grid { gap: 10px; }
+  .pp-card { min-height: 108px; padding: 14px 10px; }
 }
 
 /* Very small phones */
