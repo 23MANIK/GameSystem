@@ -1,12 +1,19 @@
 ---
 name: deploy-game
-description: Deploy Scale Architect to Vercel production (scale-architect.vercel.app). Always runs the full test suite and an in-browser playthrough of every product FIRST, in four parallel subagents on Opus 5.5 at low effort (one per product on its own port, plus unit tests and a phone check); nothing ships if any test fails. Use whenever the user says deploy, release, ship, publish, push to prod, or update the live site.
+description: Deploy Scale Architect: to the dev site (scale-architect-dev.vercel.app) by default, and to production (scale-architect.vercel.app) only after the user has checked dev and says to move it to prod. Always runs the full test suite and an in-browser playthrough of every product FIRST, in four parallel subagents on Opus 5.5 at low effort (one per product on its own port, plus unit tests and a phone check); nothing ships if any test fails. Use whenever the user says deploy, release, ship, publish, push to prod, or update the live site.
 ---
 
 # Deploy Scale Architect (tests first, always)
 
 Production: https://scale-architect.vercel.app (Vercel project `scale-architect`, team `23maniks-projects`).
 The deployable copy lives OUTSIDE the home-folder git repo, at `/Users/Shared/scale-architect`, which is already linked to that project.
+
+## Dev first, then prod
+
+Every deploy goes to the **dev site** first: https://scale-architect-dev.vercel.app (its own Vercel project, `scale-architect-dev`, built in `/Users/Shared/scale-architect-dev`).
+- "Deploy" with no target means dev: run the test gate (step 1), then step 3. Give the user the dev link and stop.
+- Production (step 4) only when the user has checked dev and says so in their own words ("move it to prod", "ship to prod"). Deploy the same commit they checked on dev.
+- Dev has no production secrets (Redis, Resend, Anthropic), so live player counts, feedback email and Create DesignGame may say they aren't set up there. That's expected.
 
 ## V1 is frozen on production
 
@@ -60,16 +67,17 @@ bash tools/sync-deploy.sh
 ```
 It copies `index.html`, `css/`, `js/`, plus `deploy/middleware.js` (the edge rate limiter) and `deploy/vercel.json` (cache headers). Check the copy matches with `diff -rq js /Users/Shared/scale-architect/js`.
 
-## 3. Preview first
+## 3. Dev site
 
-In a terminal tab (the user can watch it), run:
+In a terminal tab (the user can watch it), run from the repo:
 ```bash
-cd /Users/Shared/scale-architect && npx vercel --yes
+bash tools/deploy-dev.sh v2      # or the branch the user named
 ```
-Smoke-test the preview URL it prints with `curl`:
+It builds from a clean checkout of the pushed branch, so push first. Then smoke-test https://scale-architect-dev.vercel.app with `curl`:
 - `/`, `/js/main.js` and `/css/mobile.css` return 200.
 - The page title is "Scale Architect — System Design Game".
-- If the preview returns 401 (preview protection), say so and do these checks on production after step 4 instead.
+
+Give the user the dev link and the commit it was built from, and wait for them to say it can go to prod.
 
 ## 4. Production
 
