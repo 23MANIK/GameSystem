@@ -38,7 +38,8 @@ const LEVEL_NUMBERS = [
   'readsPerUser', 'writesPerUser', 'pageViewsPerUser', 'pageKB', 'botShare', 'spamPerUser', 'dbReadCost',
   'globalShare', 'distanceMs', 'appCallCost', 'keepRecords', 'cacheHitRate', 'edgeHitRate', 'recordSpace',
   'blobSpaceMult', 'readKB', 'writeKB', 'bigFileShare', 'unverifiedShare', 'listReadsPerUser', 'devicesPerUser',
-  'pollPerDevice', 'conflictShare', 'browsePerUser', 'publicShare', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult', 'dedupShare', 'updateShare'
+  'pollPerDevice', 'conflictShare', 'browsePerUser', 'publicShare', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult', 'dedupShare', 'updateShare',
+  'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare'
 ];
 const LEVEL_BOOLS = ['serverMode', 'crashes', 'clickTracking', 'shardIdClash', 'comingSoon'];
 const LEVEL_TEXTS = ['name', 'subtitle', 'intro', 'story', 'completionMessage'];
@@ -157,7 +158,7 @@ const GOAL_TYPES = {
   /** Failed requests under a share, with enough users online. */
   errorRate: g => ({
     id: g.id || 'clean-errors',
-    icon: g.icon || '✅',
+    icon: g.icon || '🛡️',
     info: g.info || 'uptime',
     label: g.label || `Under ${Math.round(g.max * 1000) / 10}% failed requests with ${g.users.toLocaleString()}+ users`,
     hint: g.hint,

@@ -168,6 +168,68 @@ export const CODE_FIXES = {
     effect: 'Celebrity posts stop costing ~1,000× the feed writes: the fan-out queue keeps up. Each feed read does a little more work (a few ms).',
     info: 'hybridFanout'
   },
+  // ─── Ticketing ───
+  holds: {
+    id: 'holds',
+    name: 'Hold seats during checkout',
+    icon: '⏳',
+    cost: 900,
+    unlockLevel: Infinity,
+    short: 'Picking a seat reserves it for 10 minutes (status + expires_at, or a lock with a TTL). Nobody else can buy it while you pay.',
+    effect: 'No more seats sold twice. Each booking is two short writes (reserve, then confirm) instead of one.',
+    info: 'holds'
+  },
+  searchIndex: {
+    id: 'searchIndex',
+    name: 'Search index',
+    icon: '🔍',
+    cost: 1200,
+    unlockLevel: Infinity,
+    short: 'Keep an inverted index of event names, artists and venues (full-text search, like Elasticsearch) instead of LIKE \'%taylor%\' on every row.',
+    effect: 'Searches stop scanning every event: far less database work and fast results, even with typos.',
+    info: 'searchIndex'
+  },
+  // ─── Ad clicks ───
+  rollups: {
+    id: 'rollups',
+    name: 'Stream aggregation',
+    icon: '🧮',
+    cost: 1500,
+    unlockLevel: Infinity,
+    short: 'A stream processor (like Flink) reads clicks from the queue and keeps a count per ad per minute. Dashboards read those counts. Needs the message queue.',
+    effect: 'Dashboard queries read a few pre-counted rows instead of scanning raw clicks: fast and cheap. The queue does a little more work per click.',
+    info: 'rollups'
+  },
+  dedupIds: {
+    id: 'dedupIds',
+    name: 'Signed impression IDs',
+    icon: '🪪',
+    cost: 1200,
+    unlockLevel: Infinity,
+    short: 'Every ad shown gets a unique, signed impression ID. Before a click is counted, the cache is asked "seen this ID before?". Needs the cache.',
+    effect: 'Double clicks and replays are counted once. The cache holds the recent IDs (memory) and answers one check per click.',
+    info: 'dedupIds'
+  },
+  saltKeys: {
+    id: 'saltKeys',
+    name: 'Split hot ads',
+    icon: '🧂',
+    cost: 1000,
+    unlockLevel: Infinity,
+    short: 'Give a viral ad\'s clicks the key AdId:0…N so they spread over many queue partitions. The counts are added back together afterwards.',
+    effect: 'One hot ad no longer overloads a single partition: the queue\'s work is spread evenly again.',
+    info: 'saltKeys'
+  },
+  reconcile: {
+    id: 'reconcile',
+    name: 'Nightly reconciliation',
+    icon: '🧾',
+    cost: 1500,
+    unlockLevel: Infinity,
+    short: 'Archive every raw click to the data lake, and let a batch job recount them and correct the real-time totals. Needs the data lake.',
+    effect: 'Clicks the stream lost (restarts, late events) are put back: the counts end up exact. The data lake stores every click.',
+    info: 'reconcile'
+  },
   redirect301: {
     id: 'redirect301',
     name: 'Permanent redirects (301)',

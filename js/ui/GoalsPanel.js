@@ -17,6 +17,9 @@ import { calculateFunding } from '../data/funding.js';
 import { infoButton } from './InfoTips.js';
 import { linkTerms } from './Glossary.js';
 
+/** A goal that isn't done must not look done: never show a check mark for it. */
+const pendingIcon = icon => (/^[✅✔☑]/.test(icon || '') ? '🎯' : icon);
+
 function fmt(n) {
   return Math.round(n).toLocaleString();
 }
@@ -109,7 +112,7 @@ export default class GoalsPanel {
       <section class="gp-focus">
         <span class="gp-focus-kicker">Next up</span>
         <div class="gp-focus-head">
-          <span class="gp-focus-icon">${c.icon}</span>
+          <span class="gp-focus-icon">${pendingIcon(c.icon)}</span>
           <strong>${c.label}</strong>
           ${c.info ? infoButton(c.info) : ''}
         </div>
@@ -127,7 +130,7 @@ export default class GoalsPanel {
       return `
         <li>
           <button type="button" class="gp-row${c.done ? ' done' : ''}${isFocus ? ' focus' : ''}" data-goal="${c.id}" ${c.done ? 'disabled' : ''}>
-            <span class="gp-check" style="--p:${c.done ? 100 : pct}">${c.done ? '✓' : c.icon}</span>
+            <span class="gp-check" style="--p:${c.done ? 100 : pct}">${c.done ? '✓' : pendingIcon(c.icon)}</span>
             <span class="gp-label">${c.label}</span>
             <span class="gp-val">${this.rowValue(c)}</span>
           </button>

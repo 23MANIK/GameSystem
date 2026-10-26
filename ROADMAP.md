@@ -10,6 +10,8 @@ Before the game starts, the player picks **one product** to build. Each product 
 | URL Shortener | bit.ly | Levels 1–8 playable |
 | News Feed / Posts | Twitter, Instagram | Locked |
 | Cloud Drive | Google Drive, Dropbox | Levels 1–11 playable |
+| Ticket Booking (medium) | Ticketmaster | Levels 1–8 playable |
+| Ad Click Aggregator (hard) | Google Ads reporting | Levels 1–9 playable |
 | Chat App | WhatsApp, Messenger | Locked |
 | Video Streaming | YouTube | Locked |
 | Ride Hailing | Uber | Locked |
@@ -32,6 +34,7 @@ Before the game starts, the player picks **one product** to build. Each product 
 
 ## Done
 - **Create DesignGame (branch v3).** Name a system; Claude researches it, builds levels as a data pack, test-plays them and the game shows up under Community games. Passcode-only creation. See `docs/designgame/README.md`.
+- **Ticket Booking (8 levels) and Ad Click Aggregator (9 levels)**, from the Hello Interview breakdowns. New generic mechanics: seat holds (`clashShare`), search (`searchPerUser`), waiting room (`rushPerUser`), dashboard queries (`reportPerUser`), duplicate / lost / hot clicks (`dupShare`, `lossShare`, `hotShare`), and six code fixes. Design docs and pack reports in `docs/products/ticketing*.md` and `docs/products/ad-clicks*.md`.
 - **Guestbook, 7 levels.** Each adds one piece and one difficulty:
 
   | Level | New piece | New difficulty |

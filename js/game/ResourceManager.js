@@ -92,6 +92,12 @@ export default class ResourceManager {
           live.fanoutBacklog = Math.max(0, (live.fanoutBacklog || 0) + (st.fanoutBacklogRate || 0) * deltaSeconds);
           live.fanoutClearSec = live.fanoutBacklog < 1 ? (live.fanoutClearSec || 0) + deltaSeconds : 0;
         }
+        // Ticketing: seats sold twice vs bookings made safely; fans held fairly in the waiting room
+        live.clashedBookings = (live.clashedBookings || 0) + (st?.clashPerSec || 0) * deltaSeconds;
+        if (st?.writesPerSec && !st.clashShare) live.safeBookings = (live.safeBookings || 0) + st.writesPerSec * (1 - st.errorRate) * deltaSeconds;
+        live.fairQueued = (live.fairQueued || 0) + (st?.rushQueuedPerSec || 0) * (1 - (st?.errorRate || 0)) * deltaSeconds;
+        // Ad clicks: clicks counted while the count is 99%+ accurate
+        if (st?.clickAccuracy != null && st.clickAccuracy >= 0.99) live.accurateClicks = (live.accurateClicks || 0) + st.clicksPerSec * deltaSeconds;
         if (st && st.dbCount >= 2 && !st.collisionShare && !st.diskFull) {
           live.cleanLinks = (live.cleanLinks || 0) + st.recordsPerSec * (1 - st.errorRate) * deltaSeconds;
         }
