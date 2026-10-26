@@ -34,7 +34,8 @@ const PARAM_KEYS = ['readsPerUser', 'writesPerUser', 'pageViewsPerUser', 'pageKB
   'globalShare', 'distanceMs', 'dbReadCost', 'readKind', 'cacheHitRate', 'edgeHitRate', 'clickTracking', 'keepRecords', 'appCallCost', 'shardIdClash', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult',
   'readKB', 'writeKB', 'recordSpace', 'blobSpaceMult', 'bigFileShare', 'dedupShare', 'updateShare', 'devicesPerUser',
   'pollPerDevice', 'listReadsPerUser', 'conflictShare', 'publicShare', 'unverifiedShare', 'browsePerUser',
-  'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare'];
+  'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare',
+  ...Object.keys((await import(root + 'game/AgentSim.js')).AGENT_DEFAULTS)];
 
 function params(L) {
   const p = {};
@@ -82,9 +83,9 @@ function solve(L, roles, { appCount = 1, dbCount = 1, entries, fixes, target }) 
   return { m, s, ok: false };
 }
 
-function cost(m, appCount, dbCount) {
+function cost(m, appCount, dbCount, s) {
   let price = 0;
-  let run = 0;
+  let run = Math.round(s?.tokenBillPerMin || 0);   // usage bills (an AI model's tokens)
   for (const [r, c] of Object.entries(m)) {
     const n = r === 'app' ? appCount : r === 'db' ? dbCount : 1;
     price += SP.serverCost(c) * n;
@@ -103,7 +104,7 @@ function best(L, roles, base) {
   for (let a = 1; a <= appMax; a++) {
     for (let d = 1; d <= dbMax; d++) {
       const res = solve(L, roles, { ...base, appCount: a, dbCount: d });
-      const c = cost(res.m, a, d);
+      const c = cost(res.m, a, d, res.s);
       const score = (res.ok ? 0 : 1e9) + c.run;
       if (!pick || score < pick.score) pick = { ...res, ...c, apps: a, shards: d, score };
     }
@@ -115,7 +116,11 @@ function line(label, r, L) {
   if (!r) return `  ${label}: –`;
   const s = r.s;
   const revenue = Math.round(L.userTarget / 100 * (L.coinRate || 25) * 30);
-  const flags = [s.diskFull ? 'DISK FULL' : '', s.collisionShare ? 'CODE CLASHES' : '', s.clashShare ? 'DOUBLE BOOKINGS' : '', s.clickAccuracy != null && s.clickAccuracy < 0.95 ? `clicks ${Math.round(s.clickAccuracy * 100)}%` : ''].filter(Boolean).join(' ');
+  const flags = [s.diskFull ? 'DISK FULL' : '', s.collisionShare ? 'CODE CLASHES' : '', s.clashShare ? 'DOUBLE BOOKINGS' : '', s.clickAccuracy != null && s.clickAccuracy < 0.95 ? `clicks ${Math.round(s.clickAccuracy * 100)}%` : '',
+    // AI agents: wrong answers, unsafe actions, slow research jobs, a bill bigger than the income
+    s.answerQuality != null && s.answerQuality < 0.9 ? `answers ${Math.round(s.answerQuality * 100)}%` : '',
+    s.badActionsPerSec > 0 ? 'UNSAFE' : '', s.attacksPerSec > 0 && !s.attacksBlockedPerSec ? 'TRICKED' : '', s.researchSec > 45 ? `SLOW JOBS ${Math.round(s.researchSec)}s` : '',
+    s.answerQuality != null && r.run > revenue * 0.8 ? 'LOSS' : '', L.billTarget && s.billPer1k > L.billTarget ? `COSTLY ${s.billPer1k}/1k` : ''].filter(Boolean).join(' ');
   return `  ${label.padEnd(12)} ${r.ok ? 'OK  ' : 'FAIL'} limit ${String(s.userLimit).padStart(6)}  runs out: ${(s.bottleneckRole + '.' + s.bottleneck).padEnd(14)} latency ${String(s.latency).padStart(4)} ms  `
     + `buy ${String(r.price).padStart(6)}  run ${String(r.run).padStart(5)}/min  revenue ~${revenue}/min  apps ${r.apps} shards ${r.shards} ${flags}`;
 }

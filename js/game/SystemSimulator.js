@@ -15,6 +15,7 @@
  */
 
 import { PART_ORDER, getOption } from '../data/serverParts.js';
+import { AGENT_DEFAULTS, agentFlow, agentLoads, agentLatency, agentStatus } from './AgentSim.js';
 
 export const READS_PER_USER = 0.2;            // default GET reads per online user per second
 export const DEFAULT_WRITES_PER_USER = 0.004; // default POST writes per online user per second
@@ -86,6 +87,8 @@ function trafficParams(params = {}) {
     dupShare: 0,          // clicks that arrive twice (counted twice unless deduplicated)
     hotShare: 0,          // share of clicks on one viral ad (one hot queue partition)
     lossShare: 0,         // clicks the stream loses (restarts, late events) unless reconciled
+    // ─── AI agents (readKind 'agent', see AgentSim.js) ───
+    ...AGENT_DEFAULTS,
     ...params
   };
 }
@@ -95,6 +98,7 @@ function trafficParams(params = {}) {
  * Everything here is "per online user, per second".
  */
 function trafficFlow(m, entries, fixes, p, shards) {
+  if (p.readKind === 'agent') return agentFlow(m, entries, fixes, p);
   const lookup = p.readKind === 'lookup';
   // 301 = "moved permanently": browsers remember it and skip you next time
   const browserCached = lookup && fixes.redirect301 ? BROWSER_CACHED : 0;
@@ -219,6 +223,7 @@ function trafficFlow(m, entries, fixes, p, shards) {
 
 /** Per-part load ({ base, perUser }) for every machine you have. */
 function buildLoads(m, appCount, shards, entries, fixes, p, f) {
+  if (f.agent) return agentLoads(m, appCount, shards, fixes, p, f);
   const N = Math.max(1, appCount);
   const S = Math.max(1, shards);
   const rowsPerShard = entries / S;
@@ -464,7 +469,7 @@ export function simulateSystem(state) {
   const apiAll = Math.max(1e-9, f.apiOrigin || 0);
   const searchMs = f.searches ? (fixes.searchIndex ? 2 : Math.min(400, 5 + entries / 40)) * (f.searches / apiAll) * 4 : 0;
   const reportMs = f.reports ? (f.rollups ? 2 : 100 * f.reportDbCost) * Math.min(1, (f.reports / apiAll) * 20) : 0;
-  const latency = Math.round(20 + hops + queryMs * dbShare + clickWaitMs + fileMs + fanoutMs + searchMs + reportMs + Math.max(0, peak - 0.7) * 400 + distance);
+  const latency = f.agent ? agentLatency(f, peak) : Math.round(20 + hops + queryMs * dbShare + clickWaitMs + fileMs + fanoutMs + searchMs + reportMs + Math.max(0, peak - 0.7) * 400 + distance);
 
   // Errors: overloaded parts drop requests (out of RAM is worst); a full disk
   // fails every write; clashing short codes break new links; with every app
@@ -478,6 +483,8 @@ export function simulateSystem(state) {
   if (f.tooBig) errorRate += f.tooBig * writeShare;
   // Broken files fail when someone downloads them
   if (f.broken) errorRate += f.broken * (1 - writeShare) * 0.5;
+  // AI agents: prompt-injection attacks that get through make bad answers / actions
+  if (f.agent) errorRate += f.harmShare;
   if (appDown) errorRate = 0.95;
   errorRate = Math.min(0.95, errorRate);
 
@@ -545,6 +552,7 @@ export function simulateSystem(state) {
     fanoutBacklogRate: fanoutBacklogRate(f, servers, users),
     fanoutMs,
     diskFull,
+    ...(f.agent ? agentStatus(f, users, Math.min(0.95, errorRate)) : {}),
     // Requests per second along each part of the path (for the animated diagram)
     flows: {
       reads: users * f.r,                 // real users reading
@@ -571,7 +579,17 @@ export function simulateSystem(state) {
       pushes: users * (f.pushes || 0),
       devices: users * (params.devicesPerUser || 0),
       fanout: users * (f.fanoutWrites || 0),   // feed writes (inline or via the queue)
-      fanoutQueued: users * (f.fanoutQueued || 0)
+      fanoutQueued: users * (f.fanoutQueued || 0),
+      // AI agents
+      agent: Boolean(f.agent),
+      llmCalls: users * (f.allCalls || 0),
+      toolCalls: users * (f.toolCalls || 0),
+      kbSearches: users * (f.kbSearches || 0),
+      attacks: users * (f.attacks || 0),
+      research: users * (f.research || 0),
+      asked: users * (f.asked || 0),                 // questions asked (before the semantic cache)
+      chatCalls: users * (f.calls || 0),             // model calls for chat answers
+      researchCalls: users * (f.researchCalls || 0)  // model calls for big jobs
     }
   };
 }

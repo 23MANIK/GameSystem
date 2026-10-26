@@ -27,7 +27,13 @@ export const BUILDINGS = [
   { type: 'queue', role: 'queue', name: 'Queue', category: 'Async', short: 'Buffers slow jobs to process later.' },
   { type: 'cdn', role: 'cdn', name: 'CDN', category: 'Network', short: 'Serves content close to your users.' },
   { type: 'firewall', role: 'gateway', name: 'Firewall / Gateway', category: 'Security', short: 'Front door that blocks abusive clients.' },
-  { type: 'broker', role: null, name: 'Message Broker', category: 'Async', short: 'Streams events between services.' }
+  { type: 'broker', role: null, name: 'Message Broker', category: 'Async', short: 'Streams events between services.' },
+  // AI agent machines: only shown in products that use them (onlyWhenUsed)
+  { type: 'brain', role: 'llm', name: 'AI Model', category: 'AI', short: 'The rented "brain" that reads prompts and writes answers.', onlyWhenUsed: true },
+  { type: 'library', role: 'kb', name: 'Knowledge Base', category: 'AI', short: 'Your documents, searchable by meaning.', onlyWhenUsed: true },
+  { type: 'workshop', role: 'tools', name: 'Tool Server', category: 'AI', short: 'The buttons the agent may press: orders, refunds.', onlyWhenUsed: true },
+  { type: 'shield', role: 'guard', name: 'Guardrail', category: 'Security', short: 'Checks every message and answer for tricks.', onlyWhenUsed: true },
+  { type: 'tower', role: 'orch', name: 'Orchestrator', category: 'AI', short: 'A lead agent that splits big jobs across helpers.', onlyWhenUsed: true }
 ];
 
 /** Building level 1–4 for a machine config (null config = nothing built yet). */

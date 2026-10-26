@@ -10,6 +10,7 @@ import { LEVELS } from '../data/levels.js';
 import { setActiveProduct } from '../products/registry.js';
 import Guestbook from './Guestbook.js';
 import { simulateSystem, DEFAULT_WRITES_PER_USER } from './SystemSimulator.js';
+import { AGENT_DEFAULTS } from './AgentSim.js';
 import { runningCostPerMinute, serverCost } from '../data/serverParts.js';
 import { ROLES, rolesForLevel, roleForComponent } from '../data/roles.js';
 
@@ -957,7 +958,8 @@ export default class GameState {
 
   /** Can this level use more than one machine / code fixes? */
   hasDatabaseLevel() {
-    return this.level >= ROLES.db.unlockLevel;
+    // Any second kind of machine (usually the database at Level 2)
+    return this.level >= ROLES.db.unlockLevel || rolesForLevel(this.level).length > 1;
   }
 
   /** The level's traffic: reads, writes, page views, bots, far-away users. */
@@ -969,7 +971,8 @@ export default class GameState {
       'readKB', 'writeKB', 'recordSpace', 'blobSpaceMult', 'bigFileShare', 'dedupShare', 'updateShare', 'devicesPerUser',
       'pollPerDevice', 'listReadsPerUser', 'conflictShare', 'publicShare', 'unverifiedShare', 'browsePerUser',
       'shardIdClash', 'fanoutPerWrite', 'celebrityShare', 'celebrityMult',
-      'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare']) {
+      'clashShare', 'searchPerUser', 'searchCacheHit', 'rushPerUser', 'reportPerUser', 'reportCost', 'dupShare', 'hotShare', 'lossShare',
+      ...Object.keys(AGENT_DEFAULTS)]) {
       if (L[key] !== undefined) params[key] = L[key];
     }
     if (this.spike?.kind === 'bots') params.botMult = this.spike.mult;
@@ -1033,7 +1036,9 @@ export default class GameState {
     // Some machines are cheaper to run (blob storage), cheaper still with a cold tier
     let mult = ROLES[role]?.costMult ?? 1;
     if (role === 'blob' && this.codeFixes?.coldTier) mult *= 0.5;
-    return Math.round(runningCostPerMinute(config) * count * mult);
+    // A rented AI model also bills every token it reads and writes
+    const usage = role === 'llm' && config === this.machines?.llm ? this.usageCostPerMinute() : 0;
+    return Math.round(runningCostPerMinute(config) * count * mult) + usage;
   }
 
   /** Coins per minute for every machine that's switched on (placed). */
@@ -1043,6 +1048,11 @@ export default class GameState {
       if (this.isPlaced(role)) total += this.roleRunningCostPerMinute(role);
     }
     return total;
+  }
+
+  /** Bills that grow with traffic, not machines: an AI model's token bill. */
+  usageCostPerMinute() {
+    return this.appLive ? Math.round(this.serverStatus?.tokenBillPerMin || 0) : 0;
   }
 
   getServerConfig(role = 'app') {

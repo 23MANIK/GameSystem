@@ -16,8 +16,8 @@
  *     queue (below it); database shards show as one stacked card
  */
 
-import { ROLES, CLOUD_EQUIVALENTS } from '../data/roles.js';
-import { getOption, PART_ORDER, SERVER_PARTS, runningCostPerMinute } from '../data/serverParts.js';
+import { ROLES, CLOUD_EQUIVALENTS, partView, optionView } from '../data/roles.js';
+import { getOption, getOptionIndex, PART_ORDER, SERVER_PARTS, runningCostPerMinute } from '../data/serverParts.js';
 import { infoButton } from '../ui/InfoTips.js';
 import { vocab } from '../products/registry.js';
 
@@ -118,7 +118,7 @@ function worstOf(status, role) {
   let worst = { value: 0, label: '', part: null };
   for (const partId of PART_ORDER) {
     const v = usage[partId] || 0;
-    if (v > worst.value) worst = { value: v, label: SERVER_PARTS[partId].short, part: partId };
+    if (v > worst.value) worst = { value: v, label: partView(role, SERVER_PARTS[partId]).short, part: partId };
   }
   const space = status?.space;
   if (space && space.role === role && space.capacity > 0) {
@@ -217,6 +217,7 @@ export default class SystemDiagram {
       db: has('db'), web: has('web'), gateway: has('gateway'),
       lb: has('lb'), cache: has('cache'), cdn: has('cdn'),
       idgen: has('idgen'), queue: has('queue'), blob: has('blob'), sync: has('sync'),
+      llm: has('llm'), kb: has('kb'), tools: has('tools'), guard: has('guard'), orch: has('orch'),
       direct: Boolean(gs.codeFixes?.presigned),
       dbCount: gs.isPlaced('db') ? Math.max(1, gs.dbCount()) : 0
     };
@@ -267,18 +268,27 @@ export default class SystemDiagram {
     const crossLen = vertical ? W : H;
 
     // Columns, left to right, only for what exists
+    // An AI agent has its own layout (see placeAgent): the model sits right of
+    // the app, with the cache / queue between them and tools, memory and
+    // knowledge around them
+    const agent = gs.levelDef().readKind === 'agent';
     const cols = ['users'];
     if (p.cdn) cols.push('cdn');
     if (p.gateway) cols.push('gateway');
+    if (p.guard) cols.push('guard');
     if (p.lb) cols.push('lb');
     if (p.app || this.slotRole === 'app') cols.push('app');
-    if (p.db || p.cache || p.blob) cols.push('data');
+    if (agent) {
+      if (p.kb || p.cache || p.queue) cols.push('mid');
+      if (p.llm || p.orch) cols.push('ai');
+    } else if (p.db || p.cache || p.blob) cols.push('data');
 
     // Up to 3 servers per column; only 2 when a short screen also has rows above and below
-    const sideAbove = p.web || p.idgen || p.sync;
+    const sideAbove = agent ? (p.tools || p.kb || p.orch) : (p.web || p.idgen || p.sync);
+    const sideBelow = agent ? (p.db || p.queue) : p.queue;
     const rowsCap = vertical
-      ? (sideAbove && p.queue ? 1 : 2)
-      : (sideAbove && p.queue && H < 560 ? 2 : 3);
+      ? (sideAbove && sideBelow ? 1 : 2)
+      : (sideAbove && sideBelow && H < 560 ? 2 : 3);
     const appCols = Math.ceil(Math.max(1, p.appCount) / rowsCap) > 1 ? Math.ceil(p.appCount / rowsCap) : 1;
     // Card size: as big as fits for the number of columns (smaller with many machines)
     const colCount = cols.length + (appCols - 1);
@@ -288,8 +298,8 @@ export default class SystemDiagram {
     if (vertical) {
       // Phone: cards as wide as the busiest row allows (1, 2 or 3 across), as tall as the rows allow
       const appRows = cols.includes('app') ? Math.min(Math.max(1, p.appCount), rowsCap) : 0;
-      const lanes = 1 + (sideAbove ? 1 : 0) + (p.queue ? 1 : 0);
-      const dataRow = ['cache', 'db', 'blob'].filter(r => p[r]).length;
+      const lanes = 1 + (sideAbove ? 1 : 0) + (sideBelow ? 1 : 0);
+      const dataRow = agent ? 0 : ['cache', 'db', 'blob'].filter(r => p[r]).length;
       const across = Math.max(1, dataRow, lanes + Math.max(0, appRows - 1));
       const cardW = across === 1 ? Math.min(150, W * 0.42)
         : across === 2 ? Math.min(108, W * 0.29)
@@ -319,7 +329,7 @@ export default class SystemDiagram {
 
     // Lanes: the page path / ID service above, the API path in the middle, the queue below
     const above = sideAbove;
-    const below = p.queue;
+    const below = sideBelow;
     let laneY = above && below ? crossLen * 0.52 : above ? crossLen * 0.6 : below ? crossLen * 0.42 : crossLen * 0.5;
     let webY = crossLen * 0.2;
     let belowY = crossLen * 0.85;
@@ -337,6 +347,7 @@ export default class SystemDiagram {
     place('users', 'users', colX.users, laneY);
     if (p.cdn) place('cdn', 'cdn', colX.cdn, laneY);
     if (p.gateway) place('gateway', 'gateway', colX.gateway, laneY);
+    if (p.guard) place('guard', 'guard', colX.guard, laneY);
     if (p.lb) place('lb', 'lb', colX.lb, laneY);
 
     // App tier: every app server in one box (a grid when there are many)
@@ -357,11 +368,26 @@ export default class SystemDiagram {
         appIds.push(id);
       }
     }
-    if (p.web) place('web', 'web', colX.app, webY);
+    if (agent) {
+      // Three rows: above, on and below the path from the app to the model
+      //   app column:  tools / app / chat database
+      //   mid column:  knowledge base / semantic cache / call queue
+      //   AI column:   orchestrator / AI model
+      if (p.tools) place('tools', 'tools', colX.app, webY);
+      if (p.db) place('db', 'db', colX.app, belowY);
+      if (p.kb) place('kb', 'kb', colX.mid, webY);
+      if (p.cache) place('cache', 'cache', colX.mid, laneY);
+      if (p.queue) place('queue', 'queue', colX.mid, p.cache ? belowY : laneY);
+      if (p.orch) place('orch', 'orch', colX.ai, webY);
+      if (p.llm) place('llm', 'llm', colX.ai, laneY);
+    }
+    if (agent) {
+      // placed above
+    } else if (p.web) place('web', 'web', colX.app, webY);
     // ID generator: above the app tier (above the data tier if the web server is there)
     if (p.idgen) place('idgen', 'idgen', p.web && colX.data ? colX.data : colX.app, webY);
     // Message queue: below the app tier
-    if (p.queue) place('queue', 'queue', colX.app, belowY);
+    if (p.queue && !agent) place('queue', 'queue', colX.app, belowY);
     // Sync server above the app tier; blob storage at the bottom of the data column
     if (p.sync) place('sync', 'sync', colX.app, webY);
     if (vertical && colX.data) {
@@ -370,7 +396,7 @@ export default class SystemDiagram {
       const spots = { 1: [0.5], 2: [0.3, 0.7], 3: [0.19, 0.5, 0.81] }[items.length] || [];
       items.forEach((r, i) => place(r, r, colX.data, crossLen * spots[i]));
     } else if (p.blob) place('blob', 'blob', colX.data, belowY);
-    if (vertical && colX.data) {
+    if (agent || (vertical && colX.data)) {
       // placed above
     } else if (p.cache && p.db) {
       place('cache', 'cache', colX.data, laneY - NH * 1.25);
@@ -441,17 +467,27 @@ export default class SystemDiagram {
     const gs = this.gameState;
     box(['users'], 'Clients', 'tier-clients');
     if (p.cdn) box(['cdn'], 'Edge', 'tier-edge');
-    if (p.gateway || p.lb) box(['gateway', 'lb'], 'Front door', 'tier-front');
+    if (p.gateway || p.lb || p.guard) box(['gateway', 'guard', 'lb'], p.guard && !p.gateway ? 'Safety check' : 'Front door', 'tier-front');
     if (p.web) box(['web'], 'Web tier', 'tier-web');
     if (p.idgen) box(['idgen'], 'ID service', 'tier-ids');
-    if (p.queue) box(['queue'], gs.levelDef().rushPerUser ? 'Waiting room' : 'Async · analytics', 'tier-async');
+    const agent = gs.levelDef().readKind === 'agent';
+    if (p.queue && !(agent && this.vertical)) box(['queue'], agent ? 'Call queue' : gs.levelDef().rushPerUser ? 'Waiting room' : 'Async · analytics', 'tier-async');
     if (appIds.length) {
       const n = gs.appCount();
       const label = !gs.hasDatabaseLevel() ? 'Your server' : n > 1 ? `App tier · ${n} servers` : 'App tier';
       box(appIds, label, 'tier-app');
     }
     const files = gs.levelDef().readKind === 'file';
-    if (p.db || p.cache) box(['cache', 'db'], p.dbCount > 1 ? `Data tier · ${p.dbCount} shards` : (p.blob && files ? 'Metadata' : 'Data tier'), 'tier-data');
+    if (agent && this.vertical) {
+      // Phones: the cards sit too close for a box each
+    } else if (agent) {
+      if (p.tools) box(['tools'], 'Tools (MCP)', 'tier-ids');
+      if (p.db) box(['db'], 'Chat memory', 'tier-data');
+      if (p.kb) box(['kb'], 'Knowledge (RAG)', 'tier-data');
+      if (p.cache) box(['cache'], 'Semantic cache', 'tier-data');
+      if (p.llm) box(['llm'], 'Model API', 'tier-ai');
+      if (p.orch) box(['orch'], 'Helper agents', 'tier-ai');
+    } else if (p.db || p.cache) box(['cache', 'db'], p.dbCount > 1 ? `Data tier · ${p.dbCount} shards` : (p.blob && files ? 'Metadata' : 'Data tier'), 'tier-data');
     if (p.blob) box(['blob'], files ? 'File storage' : 'Data lake', 'tier-blob');
     if (p.sync) box(['sync'], 'Live sync', 'tier-ids');
     this.buildLegend(p);
@@ -461,6 +497,14 @@ export default class SystemDiagram {
   buildLegend(p) {
     const gs = this.gameState;
     const L = gs.levelDef();
+    if (L.readKind === 'agent') {
+      const items = [['read', 'question'], ['write', 'saved chat']];
+      if (p.llm || p.tools) items.push(['event', 'model / tool call']);
+      if (L.injectShare) items.push(['bot', 'trick message']);
+      items.push(['fail', 'failed']);
+      this.legendEl.innerHTML = items.map(([k, label]) => `<span>${shapeIcon(SHAPES[k], COLORS[k])}${label}</span>`).join('');
+      return;
+    }
     const items = [['read', L.readKind === 'lookup' ? vocab('readName') : 'read'], ['write', L.readKind === 'lookup' ? `new ${vocab('record')}` : 'write']];
     if (p.web || L.pageViewsPerUser) items.push(['page', 'page']);
     if (L.botShare || L.spamPerUser) items.push(['bot', L.botKind === 'write' ? 'spam' : 'bot']);
@@ -523,9 +567,10 @@ export default class SystemDiagram {
   partsSummary(role) {
     const cfg = this.gameState.getServerConfig(role);
     if (!cfg) return '';
-    const cpu = getOption('cpu', cfg.cpu)?.label || '';
-    const ram = getOption('ram', cfg.ram)?.label || '';
-    return `${cpu} · ${ram}`;
+    const label = id => optionView(role, id, getOption(id, cfg[id]), getOptionIndex(id, cfg[id]))?.label || '';
+    // A rented AI model shows its plan, not hardware
+    if (ROLES[role]?.parts) return `${label('cpu')} plan`;
+    return `${label('cpu')} · ${label('ram')}`;
   }
 
   /** Arrows along the request path. Each has a flow type for its dots. */
@@ -538,10 +583,10 @@ export default class SystemDiagram {
     };
 
     // Front of the path: users → CDN → gateway → LB
-    const front = ['users', 'cdn', 'gateway', 'lb'].filter(id => N[id]);
+    const front = ['users', 'cdn', 'gateway', 'guard', 'lb'].filter(id => N[id]);
     for (let i = 0; i < front.length - 1; i++) {
       const to = front[i + 1];
-      add(front[i], to, `to-${to}`, { cdn: 'all traffic', gateway: 'API calls', lb: 'allowed' }[to]);
+      add(front[i], to, `to-${to}`, { cdn: 'all traffic', gateway: 'API calls', guard: 'messages', lb: 'allowed' }[to]);
     }
     const last = front[front.length - 1];
 
@@ -555,7 +600,8 @@ export default class SystemDiagram {
       N.appIn = { id: 'appIn', role: 'app', x: left, y: midY, w: 0, h: 0, virtual: true };
       add(last, 'appIn', 'to-app-tier', `split ${appIds.length} ways`);
     } else {
-      for (const id of appIds) add(last, id, 'to-app', appIds.length > 1 ? null : (last === 'users' ? 'requests' : 'API'));
+      const agentIn = this.gameState.levelDef().readKind === 'agent' ? (last === 'guard' ? 'safe messages' : 'questions') : null;
+      for (const id of appIds) add(last, id, 'to-app', appIds.length > 1 ? null : (agentIn || (last === 'users' ? 'requests' : 'API')));
     }
 
     // Pages to the web server (from users, or from the CDN on a miss)
@@ -563,7 +609,9 @@ export default class SystemDiagram {
 
     // Out of the app tier to the data tier
     const tierOut = appIds.length ? 'appTier' : null;
-    if (tierOut) {
+    if (tierOut && this.gameState.levelDef().readKind === 'agent') {
+      this.agentEdges(N, appIds, add);
+    } else if (tierOut) {
       // A virtual node at the right edge of the app tier, so 6 servers share one arrow
       const ns = appIds.map(id => N[id]);
       const right = Math.max(...ns.map(n => n.x + n.w / 2));
@@ -695,6 +743,38 @@ export default class SystemDiagram {
         this.labelsEl.appendChild(lab);
         e.labelEl = lab;
       }
+    }
+  }
+
+  /**
+   * An AI agent's arrows: the app is the hub. Questions go to the model
+   * (through the semantic cache and the call queue when they exist); tools,
+   * chat memory and the knowledge base hang off the app; big jobs go to the
+   * orchestrator, which calls the model for its helper agents.
+   */
+  agentEdges(N, appIds, add) {
+    const ns = appIds.map(id => N[id]);
+    const right = Math.max(...ns.map(n => n.x + n.w / 2));
+    const top = Math.min(...ns.map(n => n.y - n.h / 2));
+    const bottom = Math.max(...ns.map(n => n.y + n.h / 2));
+    const cx = ns.reduce((sum, n) => sum + n.x, 0) / ns.length;
+    const midY = ns.reduce((sum, n) => sum + n.y, 0) / ns.length;
+    N.appTier = { id: 'appTier', role: 'app', x: right, y: midY, w: 0, h: 0, virtual: true };
+    N.appTop = { id: 'appTop', role: 'app', x: cx, y: top, w: 0, h: 0, virtual: true };
+    N.appBottom = { id: 'appBottom', role: 'app', x: cx, y: bottom, w: 0, h: 0, virtual: true };
+
+    // To the model: app → (cache) → (queue) → model
+    let from = 'appTier';
+    if (N.cache) { add(from, 'cache', 'agent-cache', 'questions'); from = 'cache'; }
+    if (N.queue) { add(from, 'queue', 'agent-queue', from === 'cache' ? 'misses' : 'model calls'); from = 'queue'; }
+    if (N.llm) add(from, 'llm', 'agent-llm', from === 'queue' ? 'paced calls' : from === 'cache' ? 'misses' : 'prompts');
+
+    if (N.tools) add('appTop', 'tools', 'agent-tools', 'tool calls');
+    if (N.kb) add('appTier', 'kb', 'agent-kb', 'search');
+    if (N.db) add('appBottom', 'db', 'agent-db', 'chat history');
+    if (N.orch) {
+      add('appTier', 'orch', 'agent-orch', 'big jobs');
+      if (N.llm) add('orch', 'llm', 'orch-llm', 'helper calls');
     }
   }
 
@@ -873,6 +953,11 @@ export default class SystemDiagram {
       } else if (kind === 'lookup') {
         what = 'Redirect lookups (<code>GET /{code}</code>) and new short links (<code>POST /api/shorten</code>).';
         back = '<code>302 Found</code> with a <code>Location</code> header: the browser then goes to the long URL by itself.';
+      } else if (kind === 'agent') {
+        what = this.nodes.guard
+          ? 'Only messages the guardrail let through: customer questions (<code>POST /chat</code>) and big research jobs.'
+          : 'Customer questions (<code>POST /chat</code>) and big research jobs. Trick messages come in here too.';
+        back = 'The agent\'s answer, streamed back word by word.';
       } else {
         what = 'Guestbook requests: read the entries and sign the book.';
         back = 'The entries (or the page) for the user.';
@@ -895,7 +980,17 @@ export default class SystemDiagram {
         'to-queue': ['Click events dropped into the queue; the redirect doesn\'t wait.', [], 'Just "accepted": the work happens later.'],
         'edge-events': ['Edge servers log the clicks they answered to the queue.', [], '—'],
         'queue-batch': ['A worker reads events in batches and writes one row per 50.', [], 'An OK per batch.'],
-        'queue-lake': ['Every raw event is also copied from the stream into the data lake, in big files.', [], '—']
+        'queue-lake': ['Every raw event is also copied from the stream into the data lake, in big files.', [], '—'],
+        // AI agent
+        'to-guard': ['Every message a customer types. A small classifier model checks it for tricks (prompt injection) before the agent sees it.', [], 'Blocked messages get a polite refusal; safe ones go on to the agent. Answers are checked on the way out too.'],
+        'agent-cache': ['Each question is turned into a meaning vector and compared with questions answered before.', [], 'On a close match: the saved answer, with no model call. Otherwise the question goes on.'],
+        'agent-queue': ['Model calls wait here in line, so they reach the provider at a steady pace.', [], '—'],
+        'agent-llm': ['Prompts: instructions + chat history + documents + tool results + the question. In the agent loop, one question can be several calls.', ['The model reads the prompt.', 'It either writes the answer, or asks for a tool ("lookup_order 1234").', 'After a tool call, the app sends a new prompt with the result, and the loop goes on.'], 'The answer (or a tool request), token by token. Over the plan\'s limit: <code>429 Too Many Requests</code>.'],
+        'agent-tools': ['Tool calls the model asked for: look up an order, track a parcel, start a refund.', [], 'The result, as text the app adds to the next prompt.'],
+        'agent-kb': ['The question as a meaning vector: "find the help-article chunks closest to this".', [], 'The best few chunks, which go into the prompt.'],
+        'agent-db': ['Read the chat so far before each answer; save the new messages after.', [], 'The chat history (or its summary).'],
+        'agent-orch': ['Big jobs ("compare every plan for my family") go to the lead agent.', [], 'One combined report, when the helpers are done.'],
+        'orch-llm': ['The lead agent plans; each helper agent runs its own loop with its own fresh context, in parallel.', [], 'Each helper\'s findings, which the lead combines.']
       };
       const t = texts[e.flow] || ['Requests between these two machines.', [], 'Their responses.'];
       [what, steps, back] = t;
@@ -924,8 +1019,8 @@ export default class SystemDiagram {
     const down = node.role === 'app' && node.index >= (this.appIds?.length || 0) - crashed;
     const isBottleneck = status?.bottleneckRole === node.role;
     const rows = PART_ORDER.map(partId => {
-      const part = SERVER_PARTS[partId];
-      const opt = getOption(partId, cfg?.[partId]);
+      const part = partView(node.role, SERVER_PARTS[partId]);
+      const opt = optionView(node.role, partId, getOption(partId, cfg?.[partId]), getOptionIndex(partId, cfg?.[partId]));
       const use = server?.usage?.[partId] ?? 0;
       const limit = server?.limits?.[partId];
       const pct = Math.round(use * 100);
@@ -933,7 +1028,7 @@ export default class SystemDiagram {
       const first = isBottleneck && status.bottleneck === partId;
       return `
         <li class="sd-d-part${first ? ' first' : ''}">
-          <span class="sd-d-name">${part.icon} ${part.short} ${infoButton(partId)}</span>
+          <span class="sd-d-name">${part.icon} ${part.short} ${infoButton(part.info || partId)}</span>
           <span class="sd-d-spec">${opt ? `${opt.label} · ${opt.spec}` : '–'}</span>
           <span class="sd-d-bar"><span data-level="${lvl}" style="width:${Math.min(100, pct)}%"></span></span>
           <span class="sd-d-pct" data-level="${lvl}">${down ? '—' : `${pct}%`}</span>
@@ -955,7 +1050,8 @@ export default class SystemDiagram {
       <p class="sd-d-job">${role.job}</p>
       <ul class="sd-d-parts">${rows}</ul>
       ${space}
-      <p class="sd-d-line">💸 Running cost: <strong>${cfg ? runningCostPerMinute(cfg) * count : 0}/min</strong>${count > 1 ? ` for all ${count}` : ''}</p>
+      <p class="sd-d-line">💸 ${node.role === 'llm' ? 'Plan' : 'Running cost'}: <strong>${cfg ? runningCostPerMinute(cfg) * count : 0}/min</strong>${count > 1 ? ` for all ${count}` : ''}</p>
+      ${node.role === 'llm' && status ? `<p class="sd-d-line">🧾 Token bill: <strong>${Math.round(status.tokenBillPerMin || 0).toLocaleString()}/min</strong> · ${(status.tokensPerMin || 0).toLocaleString()} tokens/min ${infoButton('tokenBill')}</p>` : ''}
       ${cloud ? `<p class="sd-d-cloud">Real world: AWS ${cloud.aws} · GCP ${cloud.gcp}</p>` : ''}
       <button type="button" class="btn btn-primary sd-details-upgrade" data-role="${node.role}">Upgrade →</button>`;
   }
@@ -967,7 +1063,18 @@ export default class SystemDiagram {
     const lookup = L.readKind === 'lookup';
     const rate = v => (v >= 10 ? Math.round(v).toLocaleString() : (v || 0).toFixed(1));
     const row = (label, value, info = '') => `<li><span>${label} ${info}</span><strong>${value}</strong></li>`;
-    const rows = st ? [
+    const agent = L.readKind === 'agent';
+    const rows = st && agent ? [
+      row('Online now', gs.users.toLocaleString()),
+      row('Your system fits', `~${st.userLimit.toLocaleString()}`, infoButton('userLimit')),
+      row('Questions', `${rate(st.flows?.asked)}/s`),
+      st.llmCallsPerSec && !st.localModel ? row('Model calls', `${rate(st.llmCallsPerSec)}/s`, infoButton('agentLoop')) : '',
+      st.toolCallsPerSec ? row('Tool calls', `${rate(st.toolCallsPerSec)}/s`, infoButton('toolServer')) : '',
+      st.attacksPerSec ? row('Trick messages', `${rate(st.attacksPerSec)}/s`, infoButton('promptInjection')) : '',
+      row('Answers correct', `${Math.round((st.answerQuality || 0) * 100)}%`, infoButton('answerQuality')),
+      row('Answer time', `${(st.latency / 1000).toFixed(1)} s`, infoButton('latency')),
+      row('Failing', `${(st.errorRate * 100).toFixed(1)}%`)
+    ].join('') : st ? [
       row('Online now', gs.users.toLocaleString()),
       row('Your system fits', `~${st.userLimit.toLocaleString()}`, infoButton('userLimit')),
       row(lookup ? 'Redirects' : 'Reads', `${rate(st.readsPerSec)}/s`),
@@ -1000,6 +1107,23 @@ export default class SystemDiagram {
     if (!f) return 0;
     const appsUp = Math.max(1, status.appsUp || 1);
     const pagesToApp = this.nodes.web ? 0 : f.pagesOrigin;
+    if (f.agent) {
+      const viaOrch = Boolean(this.nodes.orch);
+      const modelCalls = f.chatCalls + (viaOrch ? 0 : f.researchCalls);
+      switch (e.flow) {
+        case 'to-guard': return f.asked + f.botsIn + f.research;
+        case 'to-app': return f.asked + (this.nodes.guard ? f.botsPassed : f.botsIn) + f.research;
+        case 'agent-cache': return f.asked;
+        case 'agent-queue':
+        case 'agent-llm': return modelCalls;
+        case 'agent-tools': return f.toolCalls;
+        case 'agent-kb': return f.kbSearches;
+        case 'agent-db': return f.dbReads + f.dbWrites;
+        case 'agent-orch': return f.research;
+        case 'orch-llm': return f.researchCalls;
+        default: return 0;
+      }
+    }
     switch (e.flow) {
       case 'to-cdn': return f.reads + f.writes + f.pages + f.botsIn;
       case 'to-gateway': return f.botKind === 'write' ? f.reads * (1 - f.edgeHit) + f.writes + f.botsIn : (f.reads + f.botsIn) * (1 - f.edgeHit) + f.writes;
@@ -1046,6 +1170,15 @@ export default class SystemDiagram {
   /** What kind of dot to send down an arrow, given the traffic mix. */
   pickKind(e, f) {
     const r = Math.random();
+    if (f?.agent) {
+      if (e.flow === 'to-guard' || e.flow === 'to-app') {
+        const bots = e.flow === 'to-app' && this.nodes.guard ? f.botsPassed : f.botsIn;
+        return r < bots / Math.max(1e-9, f.asked + bots + f.research) ? 'bot' : 'read';
+      }
+      if (e.flow === 'agent-db') return r < f.dbWrites / Math.max(1e-9, f.dbReads + f.dbWrites) ? 'write' : 'read';
+      if (e.flow === 'agent-cache' || e.flow === 'agent-kb' || e.flow === 'agent-orch') return 'read';
+      return 'event';
+    }
     if (e.flow === 'to-web') return 'page';
     if (['to-queue', 'edge-events', 'queue-batch', 'queue-lake'].includes(e.flow)) return 'event';
     if (e.flow === 'to-idgen') return 'write';
@@ -1075,7 +1208,9 @@ export default class SystemDiagram {
     const live = gs.appLive && status;
     const f = status?.flows;
     // Slow system = slow dots (latency 20 ms → normal, 140 ms → about 2.5× slower)
-    const slow = live ? 1 + Math.max(0, (gs.metrics?.latency || 20) - 30) / 70 : 1;
+    // (AI answers take seconds: their dots slow down far less, or nothing would move)
+    const lat = gs.metrics?.latency || 20;
+    const slow = !live ? 1 : f?.agent ? Math.min(3, 1 + Math.max(0, lat - 1500) / 2500) : 1 + Math.max(0, lat - 30) / 70;
     const crashed = gs.spike?.kind === 'crash' ? gs.spike.crashed : 0;
     const n = this.appIds?.length || 0;
 
@@ -1113,14 +1248,15 @@ export default class SystemDiagram {
         d.t += v * dt;
 
         // Bots bounce off the gateway (rate limited)
-        if (d.kind === 'bot' && e.flow === 'to-gateway' && this.nodes.gateway && d.t > 0.9 && Math.random() < 0.95) {
+        const bounces = (e.flow === 'to-gateway' && this.nodes.gateway) || (e.flow === 'to-guard' && this.nodes.guard);
+        if (d.kind === 'bot' && bounces && d.t > 0.9 && Math.random() < 0.95) {
           d.dead = true;
           const p = curvePoint(e, 0.92);
           this.falling.push({ x: p.x, y: p.y, vx: -60 - Math.random() * 60, vy: (Math.random() - 0.5) * 60, life: 0.9, color: COLORS.bot });
           const now = performance.now();
           if (!e.lastPopup || now - e.lastPopup > 1200) {
             e.lastPopup = now;
-            this.popups.push({ x: p.x, y: p.y - 14, text: '429', life: 0.9, color: COLORS.bot });
+            this.popups.push({ x: p.x, y: p.y - 14, text: e.flow === 'to-guard' ? 'blocked' : '429', life: 0.9, color: COLORS.bot });
           }
           continue;
         }
