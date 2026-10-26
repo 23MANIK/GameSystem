@@ -27,7 +27,8 @@ export default class LevelIntro {
     document.body.appendChild(this.el);
   }
 
-  open(gs, onStart) {
+  /** onBack: leave the intro for the start screen (players must never be stuck here). */
+  open(gs, onStart, onBack) {
     const L = gs.levelDef();
     const product = getProduct(gs.productId);
     const pack = activeProduct();
@@ -45,6 +46,7 @@ export default class LevelIntro {
     this.el.innerHTML = `
       <div class="li-card">
         <div class="li-top">
+          ${onBack ? '<button type="button" class="li-back" id="li-back" aria-label="Back to the start screen">← Back</button>' : ''}
           <span class="li-product">${product.icon} ${product.name}</span>
           <span class="li-step">Level ${L.level} of ${LEVELS.length}</span>
         </div>
@@ -67,6 +69,10 @@ export default class LevelIntro {
     btn.addEventListener('click', () => {
       this.close();
       onStart();
+    });
+    this.el.querySelector('#li-back')?.addEventListener('click', () => {
+      this.close();
+      onBack();
     });
   }
 
