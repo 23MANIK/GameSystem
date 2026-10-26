@@ -28,13 +28,14 @@ export const TICKETING_INCIDENTS = {
 export const TICKETING_ROLE_TEXT = {
   db: { job: 'Stores events, venues, one ticket per seat, and bookings, with transactions so a seat is sold once.' },
   cache: { job: 'Keeps event, venue and seat-map data in memory, so popular pages skip the database. Also caches repeated searches.' },
-  queue: { job: 'The virtual waiting room: fans wait in arrival order and are let in to book a batch at a time.', short: 'Waiting room' },
+  queue: { job: 'The virtual waiting room: fans wait in arrival order and are let in to book a batch at a time.', name: 'Waiting room', short: 'Waiting room' },
   gateway: { job: 'Front door for every API call. Rate limiting turns away scalper bots that reload seat maps nonstop.' },
   lb: { job: 'Spreads fans across your app servers and skips any that are down.' }
 };
 
 export const TICKETING_PART_TEXT = {
-  storage: { whatItDoes: 'Where tickets and bookings are saved so they survive a restart. Its speed decides how many reads and writes per second it can do.' }
+  storage: { whatItDoes: 'Where tickets and bookings are saved so they survive a restart. Its speed decides how many reads and writes per second it can do.' },
+  network: { whatItDoes: 'The pipe between your server and the internet. Every event page and seat map travels through it, and seat maps grow with the venue.' }
 };
 
 export const TICKETING_FIX_TEXT = {

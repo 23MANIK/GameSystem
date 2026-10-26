@@ -35,7 +35,8 @@ export const AD_CLICKS_ROLE_TEXT = {
 };
 
 export const AD_CLICKS_PART_TEXT = {
-  storage: { whatItDoes: 'Where ads and click counts are saved. Its speed decides how many writes per second it can take: every click starts as a write.' }
+  storage: { whatItDoes: 'Where ads and click counts are saved. Its speed decides how many writes per second it can take: every click starts as a write.' },
+  network: { whatItDoes: 'The pipe between your server and the internet. Every click, redirect and dashboard report travels through it.' }
 };
 
 export const AD_CLICKS_FIX_TEXT = {

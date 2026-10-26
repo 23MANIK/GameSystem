@@ -78,7 +78,7 @@ export const CLOUD_DRIVE_CHALLENGES = {
   4: [
     placedChallenge('gateway', '🚦', 'Put an API gateway at the front door', 'Server → Gateway tab. It routes, authenticates and rate-limits. Its request size limit is why big uploads must be split.'),
     fixOwned('chunking', '🧩', 'chunking', 'Upload big files in chunks', 'Server → Code fixes → Chunked uploads. The client splits files into 5–10 MB pieces and resumes after failures.'),
-    whileBusy('uploads-ok', '✅', 'chunking', 'Under 1% failed requests with 1,000+ users',
+    whileBusy('uploads-ok', '🛡️', 'chunking', 'Under 1% failed requests with 1,000+ users',
       'A quarter of uploads are huge: as one request they fail. Chunked uploads fix it.',
       1000, st => st.errorRate < 0.01, st => `${(st.errorRate * 100).toFixed(1)}% failing`),
     usersChallenge(1000, 'Upload traffic is heavy now; blob storage\'s network may need an upgrade.'),

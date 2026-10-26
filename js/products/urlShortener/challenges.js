@@ -73,7 +73,7 @@ export const URL_SHORTENER_CHALLENGES = {
     usersChallenge(600, 'Spam eats database writes and disk space that real users need. Block it first, then grow.'),
     {
       id: 'clean-errors',
-      icon: '✅',
+      icon: '🛡️',
       info: 'uptime',
       label: 'Under 1% failed requests with 600+ users',
       hint: 'If errors stay high, check the disk (spam fills it) and which machine runs out first.',

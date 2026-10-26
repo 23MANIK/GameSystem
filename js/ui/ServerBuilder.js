@@ -242,6 +242,9 @@ export default class ServerBuilder {
     const installed = this.installed;
     const holdsData = this.role === 'db' || (this.role === 'app' && !gs.isDbPlaced());
     const input = this.previewInput();
+    const nowSpace = gs.serverStatus?.space;
+    const usedSpace = holdsData ? (nowSpace?.used || 0) : 0;
+    const spaceMult = this.role === 'db' ? Math.max(1, gs.machineCount('db')) : 1;
 
     return PART_ORDER.map(partId => {
       const part = SERVER_PARTS[partId];
@@ -257,8 +260,10 @@ export default class ServerBuilder {
         let price = `💰 ${opt.cost * this.count}`;
         if (isInstalled) price = 'Installed';
         else if (installedIdx >= 0 && !disabled) price = `💰 ${(opt.cost - part.options[installedIdx].cost) * this.count}`;
+        const fits = opt.space * spaceMult;
+        const tooSmall = partId === 'storage' && holdsData && opt.space && !isInstalled && usedSpace > 0 && fits <= usedSpace;
         const space = partId === 'storage' && holdsData && opt.space
-          ? `<span class="sb-option-space">holds ${opt.space.toLocaleString()} ${vocab('records')}</span>` : '';
+          ? `<span class="sb-option-space${tooSmall ? ' sb-option-too-small' : ''}">${tooSmall ? `too small: you have ${Math.round(usedSpace).toLocaleString()}` : `holds ${fits.toLocaleString()} ${vocab('records')}`}</span>` : '';
         return `
           <button class="sb-option${selected ? ' selected' : ''}${isInstalled ? ' installed' : ''}${opt.unlockLevel ? ' xl' : ''}"
             data-part="${partId}" data-option="${opt.id}" ${disabled ? 'disabled' : ''}>
@@ -278,6 +283,7 @@ export default class ServerBuilder {
             <div>
               <h4 class="sb-part-name">${part.name} ${infoButton(partId)} ${extraInfo}</h4>
               <p class="sb-part-desc">${part.whatItDoes}</p>
+              ${partId === 'storage' && holdsData && gs.hasDatabaseLevel() ? `<p class="sb-part-desc sb-part-tradeoff">Speed and size trade off: <strong>HDD</strong> is big but slow, <strong>SSD</strong> is 10× faster but holds a quarter as much, <strong>NVMe</strong> is fastest and mid-size. Check the disk still fits your ${vocab('records')} before you switch.</p>` : ''}
             </div>
           </div>
           <div class="sb-options" style="--cols:${options.length}">${cards}</div>
@@ -430,16 +436,31 @@ export default class ServerBuilder {
     const btn = this.content.querySelector('#sb-confirm');
     if (btn) {
       const changed = this.hasChanges();
-      btn.disabled = !canAfford || !changed;
+      const diskTooSmall = this.diskTooSmall(status);
+      btn.disabled = !canAfford || !changed || diskTooSmall;
       const what = gs.hasDatabaseLevel() ? ROLES[this.role].name.toLowerCase() : 'server';
       btn.textContent = !changed ? 'Pick a bigger part'
+        : diskTooSmall ? 'Disk too small for your data'
         : !canAfford ? 'Not enough coins'
         : this.isUpgrade ? `Upgrade · 💰 ${cost.toLocaleString()}` : `Buy ${what} · 💰 ${cost.toLocaleString()}`;
     }
   }
 
+  /** True when the picked disk is smaller than the data already stored on it. */
+  diskTooSmall(status) {
+    const gs = this.gameState;
+    const holdsData = this.role === 'db' || (this.role === 'app' && !gs.isDbPlaced());
+    if (!holdsData || (this.isUpgrade && this.selection.storage === this.installed?.storage)) return false;
+    const used = gs.serverStatus?.space?.used || 0;
+    return used > 0 && status.space.capacity > 0 && status.space.capacity <= used;
+  }
+
   confirm() {
     if (!this.hasChanges()) return;
+    if (this.diskTooSmall(simulateSystem(this.previewInput()))) {
+      this.notifications?.show('That disk is smaller than the data already on it. Pick a bigger disk.', 'warning', 4000);
+      return;
+    }
     const role = this.role;
     const cost = this.getCost();
     const wasUpgrade = this.isUpgrade;

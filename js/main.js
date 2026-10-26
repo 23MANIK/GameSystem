@@ -281,6 +281,16 @@ class ScaleArchitect {
     document.getElementById('sheet-scrim')?.addEventListener('click', () => this.closePanel());
     this.setupSheetSwipe();
 
+    // Escape closes the side panel (Goals, Alerts...) when nothing on top of it is open
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !this.activePanel) return;
+      const infoOpen = [...document.querySelectorAll('.info-pop')].some(el => !el.hidden);
+      const levelPopOpen = this.levelPop && !this.levelPop.hidden;
+      const moneyPopOpen = this.moneyPop && !this.moneyPop.hidden;
+      if (infoOpen || levelPopOpen || moneyPopOpen || this.serverBuilder?.isOpen || document.querySelector('dialog[open]')) return;
+      this.closePanel();
+    }, true);
+
     // Click a machine chip in the top bar → its tab in the Server Builder
     this.gameState.on('openBuilder', ({ role }) => this.openServerBuilder(role));
     // Level card in the top bar → Goals
@@ -560,6 +570,10 @@ class ScaleArchitect {
 
     this.gameState.startLevel(next.level);
     this.overloadWarned = false;
+    const trim = this.gameState.levelStartTrim;
+    if (trim) {
+      this.notifications.show(`⚠️ Level ${next.level}'s new traffic needs more from your system: it now handles ~${this.gameState.serverStatus.userLimit.toLocaleString()} users, so you start with ${trim.to.toLocaleString()} instead of ${trim.from.toLocaleString()}. Check Goals for what to build.`, 'warning', 8000);
+    }
     this.hud.render();
     this.diagram.update(true);
     this.tutorial.sync();

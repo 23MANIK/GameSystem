@@ -46,7 +46,7 @@ function accuracy(pct, users, info, hint) {
 function accurateClicks(target, hint) {
   return {
     id: 'accurate-clicks',
-    icon: '✅',
+    icon: '🎯',
     info: 'reconcile',
     label: `Count ${target.toLocaleString()} clicks while counts are 99%+ accurate`,
     hint,
