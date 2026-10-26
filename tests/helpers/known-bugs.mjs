@@ -8,17 +8,9 @@
  *
  * Remove an entry as soon as its fix is merged: from then on the test guards
  * against the bug coming back, and a failure stops the deploy.
- *
- * Fixes for all of these are in PR #7 (v2) / #8 (v3), "Fix play-test findings".
  */
 export const KNOWN_BUGS = {
-  'hdd-to-ssd-shrinks-disk': 'HDD → SSD upgrade shrinks the disk from 6,000 to 1,500 records without a warning, and users are lost',
-  'storage-tradeoff-unexplained': 'Storage cards do not explain the speed vs size trade-off between HDD, SSD and NVMe',
-  'tutorial-restarts-at-step-1': 'Level 2 tutorial goes back to step 1 when the player bought the database before pressing "Show me"',
-  'level-starts-overloaded': 'A new level can open already overloaded from the users carried over (Ticket Booking Level 4)',
-  'pending-goal-green-check': 'Goals that are not done yet show a green check as their icon',
-  'escape-keeps-goals-open': 'Escape does not close the Goals panel',
-  'feedback-send-enabled-empty': 'Feedback Send button is enabled with an empty message'
+  // none right now: the 7 browser play-test findings were fixed in PR #7 / #8
 };
 
 /**
