@@ -1,6 +1,6 @@
 ---
 name: deploy-game
-description: Deploy Scale Architect: to the dev site (scale-architect-dev.vercel.app) by default, and to production (scale-architect.vercel.app) only after the user has checked dev and says to move it to prod. Always runs the full test suite and an in-browser playthrough of every product FIRST, in four parallel subagents on Opus 5.5 at low effort (one per product on its own port, plus unit tests and a phone check); nothing ships if any test fails. Use whenever the user says deploy, release, ship, publish, push to prod, or update the live site.
+description: Deploy Scale Architect: to the dev site (scale-architect-dev.vercel.app) by default, and to production (scale-architect.vercel.app) only after the user has checked dev and says to move it to prod. Always runs the full test suite FIRST (tools/test-all.sh: checks, unit tests and browser tests that play every product, in parallel); nothing ships if any test fails. Use whenever the user says deploy, release, ship, publish, push to prod, or update the live site.
 ---
 
 # Deploy Scale Architect (tests first, always)
@@ -24,41 +24,21 @@ Production runs **V1** (git tag `v1.0.0`, branch `main` in this folder's own rep
 
 **Never deploy to production without a PASS from step 1 for this exact code.** If the user asks to skip the tests, explain the risk and ask them to confirm in their own words first.
 
-## 1. Test gate (parallel subagents: Opus 5.5, low effort)
+## 1. Test gate (one command, runs in parallel)
 
-Spawn FOUR subagents with the Agent tool in ONE message, so they run in parallel. Each one uses `model: "opus"`, `effort: "low"`, `subagent_type: "general-purpose"`, and each brief starts with "Do not edit any files and do not deploy. Project: `/Users/nikhilrajpoot/Desktop/justDoIt/GameSystem`."
+```bash
+bash tools/test-all.sh
+```
+It runs three groups at the same time and needs no subagents:
+- `tools/run-tests.mjs`: syntax, files, packs, balance, headless play-test, rate limiter, feedback API
+- `tests/unit` (`node --test`): game rules, save/load, tutorial, every pack's levels, goals and guide steps
+- `tests/e2e` (Playwright, several workers, each test in its own browser context so saves never mix): start screen, picker, level intro and Back, Level 1 by hand with the guide, Server Builder and upgrades, Goals, save/Continue/Home/Retry, feedback form, top bar, phone layout (375×812), and **every playable product played from Level 1 to the end in the real page**
 
-Each product gets its own origin (port), so their localStorage saves never mix:
+The first run installs the test tools (`npm install`, `npx playwright install chromium`). It ends with `✅ ALL TESTS PASSED` (exit 0) or `❌ TESTS FAILED` with the failing tests; screenshots and traces are in `test-results/` (`npx playwright show-report`).
 
-| Agent | Server (`.claude/launch.json`) | Port | Product |
-|---|---|---|---|
-| A | `game-guestbook` | 8011 | guestbook: FIXES `{2:['pagination','index'],3:['archive']}`, APPS `{5:3,6:4,7:4}`, SHARDS `{}` |
-| B | `game-url` | 8012 | url_shortener: FIXES `{2:['index','base62'],4:['expiry'],7:['idRanges']}`, APPS `{4:3,5:4,6:5,7:6,8:5}`, SHARDS `{7:3}` |
-| C | `game-drive` | 8013 | cloud_drive: FIXES `{2:['index'],3:['presigned'],4:['chunking'],5:['verifyUploads'],6:['dedup'],7:['sharesTable'],8:['deltaSync'],9:['versions'],10:['coldTier']}`, APPS `{7:3,8:3,9:4,10:5,11:5}`, SHARDS `{10:3}` |
-| D | `game` | 8000 | unit tests + phone check |
+Tests for bugs listed in `tests/helpers/known-bugs.mjs` are reported as "known bug" and don't fail the gate. When one starts passing, the summary says "remove from known-bugs.mjs": do that, so it guards against the bug coming back.
 
-**Brief for A, B and C** (fill in the server, product and settings):
-> Start the `<server>` preview server and work only in that tab.
-> - First back up `localStorage['scale_architect_save_v4']` into `sessionStorage`. At the end, restore it exactly, even if something fails; if the key was absent, leave it absent.
-> - Clear localStorage, reload, click New Game, pick `<product>`, and click `#li-start`.
-> - Run `.claude/skills/design-product-levels/reference/playtest-bot.js` with these settings: `<settings>`.
->   - Make it return its results instead of calling `console.table`.
->   - After each `startNextLevel()`, wait until `#li-start` is visible, then click it. Clicking too early stalls the level.
-> - Every level must report done, and no `window` errors may be thrown.
-> - Stop the preview server when you finish.
-> - Reply with `PASS` or `FAIL` on the first line, then the minutes per level and the exact failure, if any.
-
-**Brief for D:**
-> 1. Run `node tools/run-tests.mjs`. Every test must pass (exit code 0).
-> 2. Start the `game` preview server and back up the save as above.
-> 3. Set the viewport to the mobile preset (375×812), reload, click Continue (or New Game if there is no save), and confirm:
->    - `window.__game.diagram.vertical === true`
->    - the Goals panel opens as a full-width sheet
->    - no `.sd-node` sits outside the screen
-> 4. Reset the viewport to desktop and restore the save.
-> 5. Reply with `PASS` or `FAIL` on the first line, then the run-tests summary, the phone check result, and the exact failure, if any.
-
-The gate passes only when all four reply PASS. If a subagent can't use the browser, run its part yourself before going on. If any part fails: stop, show the user what failed, and offer to fix it. Do not deploy.
+`tools/deploy-dev.sh` runs this gate itself on the exact commit it deploys and stops if it fails. For production (step 4), run it on that commit too. If anything fails: stop, show the user what failed, and offer to fix it. Do not deploy.
 
 ## 2. Build the deploy copy
 
