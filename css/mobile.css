@@ -140,6 +140,7 @@
   .li-card { padding: 18px 16px 16px; border-radius: 18px; }
   .li-title { font-size: 19px; }
   .li-start { min-height: 48px; }
+  .li-back { min-height: 40px; padding: 8px 14px; font-size: 13px; }
   .level-up-content { padding: 16px; }
   .level-up-continue { min-height: 48px; }
 
