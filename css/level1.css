@@ -788,57 +788,68 @@
 
 .pp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
+/* Small rounded block: icon, name, difficulty. The whole card is clickable. */
 .pp-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  padding: 16px 12px;
+  border-radius: 18px;
   background: var(--bg-glass-card);
   border: 1px solid var(--accent-cyan-border);
-  box-shadow: 0 0 24px rgba(6, 214, 160, 0.12);
+  box-shadow: 0 0 18px rgba(6, 214, 160, 0.1);
+  color: var(--text-primary);
+  text-align: center;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.pp-card.locked {
+.pp-card:not(:disabled):hover,
+.pp-card:not(:disabled):focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 24px rgba(6, 214, 160, 0.22);
+  outline: none;
+}
+
+.pp-card.locked,
+.pp-card:disabled {
   border-color: var(--border-glass);
   box-shadow: none;
-  opacity: 0.6;
+  opacity: 0.55;
+  cursor: default;
 }
 
-.pp-card-head { display: flex; align-items: center; gap: var(--space-3); }
-.pp-icon { font-size: 30px; line-height: 1; }
-.pp-name { font-family: var(--font-title); font-size: 15px; color: var(--text-primary); }
-.pp-like { font-size: 12px; color: var(--text-muted); }
+.pp-icon { font-size: 28px; line-height: 1; }
+.pp-name { font-family: var(--font-title); font-size: 14px; line-height: 1.25; color: var(--text-primary); }
 
+.pp-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+
+.pp-diff,
 .pp-lock {
-  margin-left: auto;
-  font-size: 10px;
-  white-space: nowrap;
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary);
-}
-
-.pp-tagline { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
-
-.pp-concepts { display: flex; flex-wrap: wrap; gap: 6px; }
-.pp-concepts span {
   font-size: 11px;
-  padding: 3px 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
-  background: var(--accent-blue-dim);
-  color: var(--text-primary);
 }
 
-.pp-levels { list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-muted); }
-.pp-level.open { color: var(--accent-cyan); font-weight: 600; }
+.pp-diff-easy   { background: var(--accent-cyan-dim); color: var(--accent-cyan); }
+.pp-diff-medium { background: rgba(251, 191, 36, 0.15); color: var(--accent-amber); }
+.pp-diff-hard   { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
 
-.pp-play { margin-top: auto; align-self: stretch; }
+.pp-lock { background: rgba(255, 255, 255, 0.06); color: var(--text-secondary); }
 
 /* --- Goals panel --- */
 .goals { display: flex; flex-direction: column; gap: var(--space-3); }
