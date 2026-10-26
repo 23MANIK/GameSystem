@@ -32,12 +32,16 @@ import guestbook from './guestbook/index.js';
 import urlShortener from './urlShortener/index.js';
 import cloudDrive from './cloudDrive/index.js';
 import newsFeed from './newsFeed/index.js';
+import ticketing from './ticketing/index.js';
+import adClicks from './adClicks/index.js';
 
 export const PACKS = {
   guestbook,
   url_shortener: urlShortener,
   cloud_drive: cloudDrive,
-  news_feed: newsFeed
+  news_feed: newsFeed,
+  ticketing,
+  ad_clicks: adClicks
 };
 
 // Original shared wording, so switching products can restore it
