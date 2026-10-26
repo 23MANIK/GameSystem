@@ -158,7 +158,7 @@ const GOAL_TYPES = {
   /** Failed requests under a share, with enough users online. */
   errorRate: g => ({
     id: g.id || 'clean-errors',
-    icon: g.icon || '✅',
+    icon: g.icon || '🛡️',
     info: g.info || 'uptime',
     label: g.label || `Under ${Math.round(g.max * 1000) / 10}% failed requests with ${g.users.toLocaleString()}+ users`,
     hint: g.hint,
