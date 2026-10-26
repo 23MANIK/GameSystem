@@ -316,6 +316,47 @@ export const EXPLANATIONS = {
       <p>Normal posts are still pushed into feeds on write; celebrity posts are pulled when a feed is read and merged in. Reads get a little more work, writes get vastly less.</p>
       <p class="info-eg">Twitter and Instagram both use this mix of push (most users) and pull (celebrities).</p>`
   },
+  holds: {
+    title: '⏳ Seat holds',
+    body: `<p>Paying takes minutes. Without a hold, two people can pick the same seat, and the second one to pay finds it already sold.</p>
+      <p>A hold marks the seat <em>reserved until</em> a time 10 minutes away (or takes a lock with a 10-minute TTL). Others see it as taken. If the buyer leaves, the hold simply expires.</p>
+      <p class="info-eg">Never hold a database lock for minutes: locks are meant to last milliseconds.</p>`
+  },
+  searchIndex: {
+    title: '🔍 Search index',
+    body: `<p><code>WHERE name LIKE '%taylor%'</code> can't use a normal index: the database reads every row.</p>
+      <p>A full-text index (Postgres GIN, or Elasticsearch kept in sync from the database) maps each word to the events that contain it, and handles typos too.</p>`
+  },
+  waitingRoom: {
+    title: '🚪 Virtual waiting room',
+    body: `<p>When millions want the same tickets, letting everyone hammer "book" melts the booking system and the fastest bot wins.</p>
+      <p>Instead, fans join a queue in arrival order, see their place, and are let in a batch at a time. Only admitted fans can book.</p>
+      <p class="info-eg">Often the best fix for a huge spike is a product change, not a bigger server.</p>`
+  },
+  rollups: {
+    title: '🧮 Stream aggregation',
+    body: `<p>Counting clicks with <code>GROUP BY</code> over billions of raw rows is slow and expensive.</p>
+      <p>A stream processor (Flink) reads clicks from the queue and keeps one counter per ad per minute, flushing every few seconds. Dashboards read the counters: a handful of rows.</p>`
+  },
+  dedupIds: {
+    title: '🪪 Signed impression IDs',
+    body: `<p>People double-click, browsers retry, and fraudsters replay clicks. Each would be counted twice.</p>
+      <p>Each ad shown gets a unique impression ID, signed so it can't be forged. A cache remembers recent IDs; a click with a seen ID is dropped before it is counted.</p>`
+  },
+  saltKeys: {
+    title: '🧂 Splitting hot keys',
+    body: `<p>Queues are split into partitions by key (here, the ad). One viral ad sends most clicks to one partition, and that one partition can't keep up.</p>
+      <p>Salting gives hot ads the keys <code>AdId:0</code>…<code>AdId:N</code>, spreading them out. The partial counts are summed afterwards.</p>`
+  },
+  reconcile: {
+    title: '🧾 Reconciliation',
+    body: `<p>Real-time counts are fast but can drift: a processor restarts, a late event misses its window.</p>
+      <p>Every raw click is also archived to cheap storage (the data lake). A batch job (Spark) recounts them hourly or nightly and corrects the totals. Fast layer + exact layer.</p>`
+  },
+  dataLake: {
+    title: '🗄️ Data lake',
+    body: `<p>Cheap object storage (like S3) holding every raw event in big files. Nobody queries it live; batch jobs read it to recount, audit and backfill.</p>`
+  },
   sharding: {
     title: '🧱 Sharding',
     body: `<p>Splitting one big table across several database machines. Each <strong>shard</strong> holds a slice of the rows, chosen by a <em>shard key</em> (e.g. a hash of the short code).</p>

@@ -9,6 +9,8 @@ import { GUESTBOOK_LEVELS } from './levels.js';
 import { URL_SHORTENER_LEVELS } from '../products/urlShortener/levels.js';
 import { CLOUD_DRIVE_LEVELS } from '../products/cloudDrive/levels.js';
 import { NEWS_FEED_LEVELS } from '../products/newsFeed/levels.js';
+import { TICKETING_LEVELS } from '../products/ticketing/levels.js';
+import { AD_CLICKS_LEVELS } from '../products/adClicks/levels.js';
 
 const levelList = levels => levels.map(l => ({ level: l.level, name: l.name, focus: l.subtitle, playable: !l.comingSoon }));
 
@@ -53,6 +55,28 @@ export const PRODUCTS = [
     concepts: ['Blob storage', 'Pre-signed URLs', 'Chunked uploads', 'Dedup', 'WebSocket sync', 'Conflicts', 'Cold storage'],
     playable: true,
     levels: levelList(CLOUD_DRIVE_LEVELS)
+  },
+  {
+    id: 'ticketing',
+    difficulty: 'medium',
+    name: 'Ticket Booking',
+    likeWhat: 'like Ticketmaster',
+    icon: '🎟️',
+    tagline: 'Show events, draw seat maps and sell every seat exactly once, even when millions want the same show. Seat holds, scalper bots, caching, search and a virtual waiting room.',
+    concepts: ['Seat holds (TTL locks)', 'Rate limiting', 'Load balancing', 'Read-heavy caching', 'Search index', 'Virtual waiting room'],
+    playable: true,
+    levels: levelList(TICKETING_LEVELS)
+  },
+  {
+    id: 'ad_clicks',
+    difficulty: 'hard',
+    name: 'Ad Click Aggregator',
+    likeWhat: 'like Google Ads reporting',
+    icon: '🖱️',
+    tagline: 'Count billions of ad clicks exactly once and show advertisers live numbers. Click streams, stream aggregation, dedup with impression IDs, hot ads, reconciliation and sharding.',
+    concepts: ['Message queues / streams', 'Stream aggregation', 'Idempotency / dedup', 'Hot partitions', 'Lambda architecture', 'Sharding'],
+    playable: true,
+    levels: levelList(AD_CLICKS_LEVELS)
   },
   {
     id: 'chat',

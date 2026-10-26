@@ -215,7 +215,7 @@ export function placedChallenge(role, icon, label, hint) {
   return {
     id: `place-${role}`,
     icon,
-    info: { db: 'database', web: 'webServer', gateway: 'gateway', lb: 'loadBalancer', cache: 'cache', cdn: 'cdn', idgen: 'idGenerator', queue: 'messageQueue' }[role],
+    info: { db: 'database', web: 'webServer', gateway: 'gateway', lb: 'loadBalancer', cache: 'cache', cdn: 'cdn', idgen: 'idGenerator', queue: 'messageQueue', blob: 'blobStorage', sync: 'syncServer' }[role],
     label,
     hint,
     progress: gs => ({ value: gs.isPlaced(role) ? 1 : 0, target: 1, unit: '', display: gs.isPlaced(role) ? 'Done' : 'Not built yet' })
