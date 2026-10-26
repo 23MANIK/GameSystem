@@ -21,7 +21,8 @@ PROD_PROJECT_ID="prj_HTX21vAujFdvFNfvAWpCRlLSZ8fh"   # scale-architect (producti
 WT="$(mktemp -d)/src"
 git -C "$REPO" fetch origin "$BRANCH"
 git -C "$REPO" worktree add --detach "$WT" "origin/$BRANCH"
-trap 'git -C "$REPO" worktree remove --force "$WT"' EXIT
+# rm + prune instead of "git worktree remove", which older git (2.15) lacks
+trap 'rm -rf "$WT"; git -C "$REPO" worktree prune' EXIT
 COMMIT="$(git -C "$WT" log -1 --format='%h %s')"
 
 bash "$WT/tools/sync-deploy.sh" "$DEV_DIR"
