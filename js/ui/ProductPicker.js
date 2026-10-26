@@ -5,6 +5,30 @@
 
 import { PRODUCTS } from '../data/products.js';
 
+const DIFFICULTY = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+
+/** A product's difficulty: its own, else guessed from how many levels it has. */
+export function difficultyOf(p) {
+  if (DIFFICULTY[p.difficulty]) return p.difficulty;
+  const n = (p.levels || []).length;
+  return n <= 5 ? 'easy' : n <= 8 ? 'medium' : 'hard';
+}
+
+/** One small card: icon, name and difficulty. The whole card is the play button. */
+function card(p) {
+  const d = difficultyOf(p);
+  return `
+    <button type="button" class="pp-card pp-play${p.playable ? '' : ' locked'}" data-product="${p.id}" ${p.playable ? '' : 'disabled'}
+      aria-label="${p.name}, ${DIFFICULTY[d]}${p.playable ? '' : ', coming soon'}">
+      <span class="pp-icon" aria-hidden="true">${p.icon}</span>
+      <span class="pp-name">${p.name}</span>
+      <span class="pp-tags">
+        <span class="pp-diff pp-diff-${d}">${DIFFICULTY[d]}</span>
+        ${p.playable ? '' : '<span class="pp-lock">🔒 Soon</span>'}
+      </span>
+    </button>`;
+}
+
 export default class ProductPicker {
   constructor(el) {
     this.el = el;
@@ -12,29 +36,7 @@ export default class ProductPicker {
 
   /** Show the picker; `onPick(productId)` runs when a playable product is chosen. */
   open(onPick, onBack, savedGame = '') {
-    const cards = PRODUCTS.map(p => {
-      const levels = p.levels.map(l => `
-        <li class="pp-level${l.playable ? ' open' : ''}" title="${l.focus}">
-          ${l.playable ? '' : '🔒 '}Lv.${l.level} ${l.name}
-        </li>`).join('');
-      return `
-        <article class="pp-card${p.playable ? '' : ' locked'}" data-product="${p.id}">
-          <div class="pp-card-head">
-            <span class="pp-icon">${p.icon}</span>
-            <div>
-              <h3 class="pp-name">${p.name}</h3>
-              <span class="pp-like">${p.likeWhat}</span>
-            </div>
-            ${p.playable ? '' : '<span class="pp-lock">🔒 Coming soon</span>'}
-          </div>
-          <p class="pp-tagline">${p.tagline}</p>
-          <div class="pp-concepts">${p.concepts.map(c => `<span>${c}</span>`).join('')}</div>
-          <ul class="pp-levels">${levels}</ul>
-          <button class="btn ${p.playable ? 'btn-primary' : 'btn-secondary'} pp-play" data-product="${p.id}" ${p.playable ? '' : 'disabled'}>
-            ${p.playable ? '▶ Play from Level 1' : 'Locked'}
-          </button>
-        </article>`;
-    }).join('');
+    const cards = PRODUCTS.map(p => card(p)).join('');
 
     this.el.innerHTML = `
       <div class="pp-inner">
