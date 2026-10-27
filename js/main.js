@@ -33,6 +33,7 @@ import ProductPicker from './ui/ProductPicker.js';
 import CreateGame from './ui/CreateGame.js';
 import { ensureGame, isGeneratedId, savedProductId, linkedGameId } from './designgame/client.js';
 import CrashScreen from './ui/CrashScreen.js';
+import NextStep from './ui/NextStep.js';
 
 // Seconds of game time at 0 coins, losing money, before the system crashes
 const CRASH_AFTER_SECONDS = 40;
@@ -103,11 +104,20 @@ class ScaleArchitect {
     const hasSave = this.gameState.load();
     let saveLabel = '';
     if (hasSave) {
-      btnContinue.style.display = 'inline-flex';
+      btnContinue.style.display = '';
       const gs = this.gameState;
       const product = getProduct(gs.productId);
+      const total = product.levels?.length || LEVELS.length;
+      const done = Math.max(0, gs.level - 1) + (gs.levelCompleted ? 1 : 0);
       saveLabel = `${product.icon} ${product.name} · Level ${gs.level}: ${gs.levelDef().name}`;
-      btnContinue.innerHTML = `<span>▶️</span><span class="intro-continue">Continue<small class="intro-save">${saveLabel}</small></span>`;
+      // Returning players: Continue is the one big button, with where they left off
+      introScreen.classList.add('has-save');
+      btnContinue.innerHTML = `
+        <span class="ic-top"><span class="ic-name">${product.icon} ${product.name}</span><span class="ic-step">Level ${gs.level} of ${total}</span></span>
+        <span class="ic-level">${gs.levelDef().name}${gs.levelCompleted ? ' · complete' : ''}</span>
+        <span class="ic-bar"><i style="width:${Math.round((done / total) * 100)}%"></i></span>
+        <span class="ic-go">▶ Continue</span>`;
+      btnNewGame.innerHTML = 'New game';
     }
 
     // New Game → pick a product first
@@ -119,7 +129,9 @@ class ScaleArchitect {
       this.gameState.coins = LEVELS[0].startingCoins;
       this.startGame(introScreen);
     };
+    const saved = hasSave ? { productId: this.gameState.productId, level: this.gameState.level } : null;
     const openPicker = () => picker.open(play, null, saveLabel, {
+      saved,
       onCreate: () => creator.open({ onPlay: play, onBack: openPicker })
     });
     btnNewGame.addEventListener('click', openPicker);
@@ -160,15 +172,13 @@ class ScaleArchitect {
 
       // Bought a machine but never placed it (e.g. reloaded mid-step)
       this.resumePlacement();
+      this.nextStep.update();
 
       this.updateTraffic();
 
       if (this.gameState.levelCompleted) {
-        // A finished level stays frozen at its final result
-        const next = this.nextPlayableLevel();
-        this.notifications.show(next
-          ? `✅ Level complete. Open Goals to start Level ${next.level}: ${next.name}.`
-          : '✅ Level complete. Your results are saved and paused. Next level coming soon.', 'success', 6000);
+        // A finished level stays frozen at its final result; the Next step card offers the next level
+        if (!this.nextPlayableLevel()) this.notifications.show('✅ Level complete. Your results are saved and paused. Next level coming soon.', 'success', 6000);
       } else {
         // A new level opens with its intro card; the clock starts after it
         this.startLevelWithIntro();
@@ -245,6 +255,19 @@ class ScaleArchitect {
       this.openServerBuilder(tab);
     });
 
+    // The one thing to do now, above the bottom bar (steps aside while the guide talks)
+    this.nextStep = new NextStep(document.getElementById('next-step'), this.gameState, {
+      goalsPanel: this.goalsPanel,
+      isHidden: () => this.nextStepHidden(),
+      isPlacing: () => Boolean(this.placing),
+      onAct: (tab, place) => {
+        if (place) { this.resumePlacement(); return; }
+        this.openServerBuilder(tab || null);
+      },
+      onOpenGoals: () => { if (this.activePanel !== 'goals') this.togglePanel('goals'); },
+      onStartNext: () => this.startNextLevel()
+    });
+
     this.crashScreen = new CrashScreen({
       onRetry: () => {
         if (!this.gameState.restoreLevelStart()) return;
@@ -264,6 +287,22 @@ class ScaleArchitect {
 
     this.guide = new GuideBubble(document.getElementById('guide-bubble'), this.tutorial, this.gameState);
     this.levelIntro = new LevelIntro();
+    // The guide re-renders on tutorial changes; the Next step card follows it
+    this.tutorial.onChange(() => setTimeout(() => this.nextStep.update(), 0));
+  }
+
+  /** The Next step card hides while something else is guiding the player. */
+  nextStepHidden() {
+    const guide = document.getElementById('guide-bubble');
+    const overlay = document.getElementById('level-up-overlay');
+    return Boolean(
+      (guide && !guide.hidden) ||
+      this.activePanel ||
+      document.body.classList.contains('builder-open') ||
+      document.body.classList.contains('level-intro-open') ||
+      overlay?.classList.contains('active') ||
+      this.serverBuilder?.isOpen
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -287,7 +326,7 @@ class ScaleArchitect {
       const infoOpen = [...document.querySelectorAll('.info-pop')].some(el => !el.hidden);
       const levelPopOpen = this.levelPop && !this.levelPop.hidden;
       const moneyPopOpen = this.moneyPop && !this.moneyPop.hidden;
-      if (infoOpen || levelPopOpen || moneyPopOpen || this.serverBuilder?.isOpen || document.querySelector('dialog[open]')) return;
+      if (infoOpen || levelPopOpen || moneyPopOpen || this.hud?.isPopOpen() || this.serverBuilder?.isOpen || document.querySelector('dialog[open]')) return;
       this.closePanel();
     }, true);
 
@@ -301,6 +340,8 @@ class ScaleArchitect {
     this.gameState.on('goHome', () => this.goHome());
     // Coins in the top bar → Money panel
     this.gameState.on('openMoney', () => this.toggleMoneyPop());
+    // Opening the ☰ menu or the health chip closes the other drop-downs
+    this.gameState.on('hudPopOpened', () => { this.toggleLevelPop(false); if (this.moneyPop) this.toggleMoneyPop(false); });
 
     // ─── Game State Events ───
     this.gameState.on('levelUp', (data) => this.showLevelUpOverlay(data));
@@ -337,7 +378,7 @@ class ScaleArchitect {
       document.body.appendChild(this.levelPop);
       document.addEventListener('click', (e) => {
         if (this.levelPop.hidden) return;
-        if (this.levelPop.contains(e.target) || e.target.closest('#hud-level') || e.target.closest('.info-pop')) return;
+        if (this.levelPop.contains(e.target) || e.target.closest('#hud-level') || e.target.closest('.hud-menu-pop') || e.target.closest('.info-pop')) return;
         this.toggleLevelPop(false);
       });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.toggleLevelPop(false); });
@@ -393,7 +434,7 @@ class ScaleArchitect {
       this.moneyPopPanel = new MoneyPanel(this.moneyPop.querySelector('.money-pop-inner'), this.gameState);
       document.addEventListener('click', (e) => {
         if (this.moneyPop.hidden) return;
-        if (this.moneyPop.contains(e.target) || e.target.closest('#hud-coins-btn') || e.target.closest('.info-pop')) return;
+        if (this.moneyPop.contains(e.target) || e.target.closest('#hud-coins-btn') || e.target.closest('.hud-menu-pop') || e.target.closest('.info-pop')) return;
         this.toggleMoneyPop(false);
       });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.toggleMoneyPop(false); });
@@ -540,7 +581,7 @@ class ScaleArchitect {
 
   openServerBuilder(tab = null) {
     if (this.gameState.levelCompleted) {
-      this.notifications.show('✅ This level is complete and paused. Start the next level from Goals.', 'info', 4000);
+      this.notifications.show('✅ This level is complete and paused. Start the next level from the button at the bottom.', 'info', 4000);
       return;
     }
     if (this.placing) {
@@ -581,6 +622,7 @@ class ScaleArchitect {
     this.updateTraffic();
     this.updateActivePanel();
     this.startLevelWithIntro();
+    this.nextStep?.update();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -619,6 +661,7 @@ class ScaleArchitect {
       b.classList.toggle('active', b.dataset.panel === panelType);
     });
     this.guide.refreshHighlight();
+    this.nextStep?.update();
   }
 
   closePanel() {
@@ -630,6 +673,7 @@ class ScaleArchitect {
     this.activePanel = null;
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     this.guide.refreshHighlight();
+    this.nextStep?.update();
   }
 
   /** Unread count on the Notifications button (live list if that tab is open). */
@@ -737,6 +781,7 @@ class ScaleArchitect {
 
   startGameLoop() {
     this.isRunning = true;
+    this.nextStep?.update();
     this.tickInterval = setInterval(() => {
       // Speed button: 2× or 4× runs that many game steps per tick
       const steps = this.gameState.speed || 1;
@@ -962,27 +1007,13 @@ class ScaleArchitect {
   showLevelCompleteOverlay(data) {
     this.notifications.clear();
     const overlay = document.getElementById('level-up-overlay');
+    overlay.classList.add('lc-v4');
     document.getElementById('level-up-number').textContent = data.level;
     overlay.querySelector('.level-up-title').textContent = 'LEVEL COMPLETE!';
     document.getElementById('level-up-name').textContent = data.name;
 
-    const next = !data.next ? ''
-      : data.nextPlayable
-        ? `<div class="unlock-section"><h4>🔓 Next: Level ${data.next.level}</h4><ul><li><strong>${data.next.name}</strong>: ${data.next.subtitle}</li></ul></div>`
-        : `<div class="unlock-section"><h4>🔒 Coming next</h4><ul><li>Level ${data.next.level}: ${data.next.name}, ${data.next.subtitle} (coming soon)</li></ul></div>`;
+    // Result first: the reward and three numbers. Everything else is one tap away.
     const s = data.stats;
-    const statsHtml = s ? `
-      <div class="lc-stats">
-        <div><span>Avg users online</span><strong>${s.avgUsers}</strong></div>
-        <div><span>Est. daily users ${infoButton('dailyUsers')}</span><strong>${s.estDailyUsers.toLocaleString()}</strong></div>
-        <div><span>Peak users</span><strong>${s.peakUsers}</strong></div>
-        <div><span>Revenue</span><strong class="pos">+${s.revenue.toLocaleString()}</strong></div>
-        <div><span>Server cost</span><strong class="neg">−${s.cost.toLocaleString()}</strong></div>
-        <div><span>Profit</span><strong class="${s.profit >= 0 ? 'pos' : 'neg'}">${s.profit.toLocaleString()}</strong></div>
-        <div><span>Lost to failures ${infoButton('lostRevenue')}</span><strong class="neg">−${s.lost.toLocaleString()}</strong></div>
-        <div><span>Outage penalties</span><strong class="neg">−${s.penalties.toLocaleString()}</strong></div>
-        <div><span>Uptime · Reputation ${infoButton('reputation')}</span><strong>${s.uptime}% · ${s.reputation}</strong></div>
-      </div>` : '';
     const f = data.funding;
     const fundingHtml = f && f.amount > 0 ? `
       <div class="lc-funding">
@@ -993,46 +1024,78 @@ class ScaleArchitect {
             <strong class="lc-funding-amount">+${f.amount.toLocaleString()} coins</strong>
           </div>
         </div>
-        <p class="lc-funding-why">
-          ${f.investor} put in ${f.amount.toLocaleString()}: a ${f.base.toLocaleString()} round to fund the next stage,
-          ×${f.usersFactor} for your users (avg ${s.avgUsers.toLocaleString()} vs a target of ${(data.userTarget || 0).toLocaleString()})
-          and ×${f.profitFactor} because you kept ${f.margin}% of revenue as profit.
-          ${f.reliabilityCut > 0
-            ? `They cut ${f.reliabilityCut.toLocaleString()} because of your outages (reliability ${f.reliability}%).`
-            : 'No outages: full amount!'}
-          Valuation: ${f.valuation.toLocaleString()} coins.
-        </p>
+        <details class="lc-more">
+          <summary>Why this amount</summary>
+          <p class="lc-funding-why">
+            ${f.investor} put in ${f.amount.toLocaleString()}: a ${f.base.toLocaleString()} round to fund the next stage,
+            ×${f.usersFactor} for your users (avg ${s.avgUsers.toLocaleString()} vs a target of ${(data.userTarget || 0).toLocaleString()})
+            and ×${f.profitFactor} because you kept ${f.margin}% of revenue as profit.
+            ${f.reliabilityCut > 0
+              ? `They cut ${f.reliabilityCut.toLocaleString()} because of your outages (reliability ${f.reliability}%).`
+              : 'No outages: full amount!'}
+            Valuation: ${f.valuation.toLocaleString()} coins.
+          </p>
+        </details>
       </div>` : '';
+    const statsHtml = s ? `
+      <div class="lc-stats lc-key">
+        <div><span>Avg users online</span><strong>${s.avgUsers.toLocaleString()}</strong></div>
+        <div><span>Profit</span><strong class="${s.profit >= 0 ? 'pos' : 'neg'}">${s.profit.toLocaleString()}</strong></div>
+        <div><span>Uptime</span><strong>${s.uptime}%</strong></div>
+      </div>
+      <details class="lc-more lc-all">
+        <summary>All stats</summary>
+        <div class="lc-stats">
+          <div><span>Est. daily users ${infoButton('dailyUsers')}</span><strong>${s.estDailyUsers.toLocaleString()}</strong></div>
+          <div><span>Peak users</span><strong>${s.peakUsers.toLocaleString()}</strong></div>
+          <div><span>Revenue</span><strong class="pos">+${s.revenue.toLocaleString()}</strong></div>
+          <div><span>Server cost</span><strong class="neg">−${s.cost.toLocaleString()}</strong></div>
+          <div><span>Lost to failures ${infoButton('lostRevenue')}</span><strong class="neg">−${s.lost.toLocaleString()}</strong></div>
+          <div><span>Outage penalties</span><strong class="neg">−${s.penalties.toLocaleString()}</strong></div>
+          <div><span>Reputation ${infoButton('reputation')}</span><strong>${s.reputation}</strong></div>
+        </div>
+      </details>` : '';
+    const next = !data.next ? '<p class="lc-next">🏆 You finished every level of this product. More products are coming soon.</p>'
+      : data.nextPlayable
+        ? `<p class="lc-next">Next: <strong>${data.next.name}</strong>. ${data.next.subtitle || ''}</p>`
+        : `<p class="lc-next">🔒 Coming next: Level ${data.next.level}, ${data.next.name} (coming soon)</p>`;
     document.getElementById('level-up-unlocks').innerHTML = `
       <p class="level-complete-message">${linkTerms(data.completionMessage)}</p>
       ${fundingHtml}
       ${statsHtml}
-      ${next}
-      <p class="level-complete-hint">${data.next
-        ? '⏸ Your system handled everything this level asked for, so the level is paused at these results. Machines, data, users and coins carry over to the next level.'
-        : '🏆 You finished every level of this product, from one garage server to a global system. More products are coming soon.'}</p>`;
+      ${next}`;
 
     overlay.style.display = 'flex';
     overlay.classList.add('active');
     overlay.style.animation = 'fade-in 0.5s ease-out';
+    overlay.scrollTop = 0;
+    const close = () => {
+      overlay.style.animation = 'fade-out 0.3s ease-out forwards';
+      setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('active'); this.nextStep?.update(); }, 300);
+    };
     const btn = document.getElementById('level-up-continue');
+    const stay = document.getElementById('level-up-stay');
     if (data.nextPlayable) {
       btn.textContent = `Start Level ${data.next.level} →`;
       btn.onclick = () => this.startNextLevel();
+      if (stay) { stay.hidden = false; stay.onclick = close; }
     } else {
       btn.textContent = 'Continue';
-      btn.onclick = () => {
-        overlay.style.animation = 'fade-out 0.3s ease-out forwards';
-        setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('active'); }, 300);
-      };
+      btn.onclick = close;
+      if (stay) stay.hidden = true;
     }
     this.hud.update();
+    this.nextStep?.update();
+    btn.focus({ preventScroll: true });
   }
 
   showLevelUpOverlay(data) {
     const overlay = document.getElementById('level-up-overlay');
     document.getElementById('level-up-number').textContent = data.level;
     overlay.querySelector('.level-up-title').textContent = 'LEVEL UP!';
+    overlay.classList.remove('lc-v4');
+    const stayBtn = document.getElementById('level-up-stay');
+    if (stayBtn) stayBtn.hidden = true;
     document.getElementById('level-up-name').textContent = data.name;
 
     let unlockHtml = '<h3>New Unlocks:</h3>';
