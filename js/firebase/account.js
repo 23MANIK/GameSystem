@@ -32,9 +32,10 @@ const ls = {
   json: k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } }
 };
 
-/** Settings: a test can inject { config, emulator } before the page loads. */
+/** Settings: a test can inject { config, emulator }, or { off: true }, before the page loads. */
 function settings() {
   const injected = typeof window !== 'undefined' ? window.__SA_FIREBASE__ : null;
+  if (injected?.off) return null;
   if (injected?.config) return injected;
   return FIREBASE_CONFIG ? { config: FIREBASE_CONFIG } : null;
 }

@@ -17,6 +17,10 @@ export const test = base.extend({
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    // Firebase (sign-in, cloud saves, analytics) is off unless a test turns it on
+    // with its own config (tests/e2e/account.spec.mjs uses a fake SDK)
+    await page.route(/www\.gstatic\.com\/firebasejs\//, r => r.abort());
+    await page.addInitScript(() => { window.__SA_FIREBASE__ = window.__SA_FIREBASE__ || { off: true }; });
     // Repeatable randomness (spikes, incidents), as in the headless play-test
     await page.addInitScript(seed => {
       let s = seed;

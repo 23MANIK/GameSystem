@@ -31,7 +31,7 @@ async function fakeFirebase(page, cloud, user = NIKHIL) {
   }, user);
 }
 
-test('without a Firebase config there is no sign-in button', async ({ game, page }) => {
+test('with Firebase off there is no sign-in button', async ({ game, page }) => {
   await game.home();
   await expect(page.locator('#intro-account')).toBeHidden();
 });

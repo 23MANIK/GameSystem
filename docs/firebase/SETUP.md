@@ -6,7 +6,7 @@ Analytics for Firebase for everyone (signed in or not). Signing in is optional.
 
 Code: `js/firebase/` (config, account, save merge rules), `js/ui/AccountChip.js`,
 hooks in `js/main.js`. Security rules: `firebase/firestore.rules`.
-Until `js/firebase/config.js` has a config, all of this is off.
+Set `FIREBASE_CONFIG` in `js/firebase/config.js` to `null` to turn all of this off. Browser tests run with it off (see `tests/e2e/fixtures.mjs`) except `account.spec.mjs`, which uses a fake SDK.
 
 ## One-time setup (Firebase console, about 10 minutes)
 
