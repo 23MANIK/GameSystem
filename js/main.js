@@ -33,6 +33,8 @@ import ProductPicker from './ui/ProductPicker.js';
 import CreateGame from './ui/CreateGame.js';
 import { ensureGame, isGeneratedId, savedProductId, linkedGameId } from './designgame/client.js';
 import CrashScreen from './ui/CrashScreen.js';
+import account from './firebase/account.js';
+import AccountChip from './ui/AccountChip.js';
 
 // Seconds of game time at 0 coins, losing money, before the system crashes
 const CRASH_AFTER_SECONDS = 40;
@@ -83,8 +85,15 @@ class ScaleArchitect {
     this.presence = new Presence();
     this.presence.onChange(() => this.renderPresence());
     this.presence.peek();
+    // Google sign-in (Firebase): load in the background. If a player was signed in
+    // here last time, wait briefly for their cloud save so Continue shows the newest game.
+    account.start();
+    const cloud = account.probablySignedIn
+      ? Promise.race([account.whenReady(3000).then(() => account.sync()), new Promise(r => setTimeout(r, 5000))])
+        .catch(err => console.warn('Cloud save sync failed:', err))
+      : Promise.resolve();
     // A generated game (saved, or opened from a link) must be loaded before the save is read
-    this.loadGeneratedGames().finally(() => this.setupIntroScreen());
+    cloud.finally(() => this.loadGeneratedGames().finally(() => this.setupIntroScreen()));
     this.animateIntroParticles();
   }
 
@@ -98,6 +107,11 @@ class ScaleArchitect {
     const introScreen = document.getElementById('intro-screen');
     const btnNewGame = document.getElementById('btn-new-game');
     const btnContinue = document.getElementById('btn-continue-game');
+
+    // Sign in with Google: if that brings a newer save from the cloud, show it
+    this.accountChip = new AccountChip(document.getElementById('intro-account'), {
+      onSignedIn: (choice) => { if (choice === 'pull') location.reload(); }
+    });
 
     // Check for saved game
     const hasSave = this.gameState.load();
@@ -117,6 +131,7 @@ class ScaleArchitect {
       this.gameState.reset();
       this.gameState.productId = productId;
       this.gameState.coins = LEVELS[0].startingCoins;
+      account.log('game_start', { product_id: productId, continued: false });
       this.startGame(introScreen);
     };
     const openPicker = () => picker.open(play, null, saveLabel, {
@@ -127,6 +142,7 @@ class ScaleArchitect {
     if (this.linkedGame && this.gameState.productId !== this.linkedGame) openPicker();
 
     btnContinue.addEventListener('click', () => {
+      account.log('game_start', { product_id: this.gameState.productId, level: this.gameState.level, continued: true });
       this.startGame(introScreen);
     });
 
@@ -303,10 +319,14 @@ class ScaleArchitect {
     this.gameState.on('openMoney', () => this.toggleMoneyPop());
 
     // ─── Game State Events ───
+    // Every save also goes to the player's account when they're signed in
+    this.gameState.on('saved', () => account.noteLocalSave());
     this.gameState.on('levelUp', (data) => this.showLevelUpOverlay(data));
     this.gameState.on('levelComplete', (data) => {
       this.freezeLevel();
       this.showLevelCompleteOverlay(data);
+      account.log('level_complete', this.analyticsLevel({ coins: Math.round(this.gameState.coins), users: Math.round(this.gameState.users) }));
+      account.flush(true);
     });
     this.gameState.on('serverUpgraded', () => {
       this.overloadWarned = false;
@@ -458,6 +478,7 @@ class ScaleArchitect {
       return;
     }
     this.levelIntro.open(gs, () => {
+      account.log('level_start', this.analyticsLevel());
       gs.introSeenLevel = gs.level;
       gs.save();
       gs.snapshotLevelStart();
@@ -493,11 +514,17 @@ class ScaleArchitect {
     });
   }
 
+  /** Product and level for an analytics event, plus any extra fields. */
+  analyticsLevel(extra = {}) {
+    return { product_id: this.gameState.productId, level: this.gameState.level, ...extra };
+  }
+
   /** Save and return to the start screen. The game picks up where it was on Continue. */
   goHome() {
     this.stopGameLoop();
     this.gameState.save();
-    location.reload();
+    // Upload to the player's account first (if signed in), but never wait long
+    Promise.race([account.flush(true), new Promise(r => setTimeout(r, 1500))]).finally(() => location.reload());
   }
 
   /**
@@ -836,6 +863,7 @@ class ScaleArchitect {
     this.stopGameLoop();
     this.closePanel?.();
     const level = gs.levelDef();
+    account.log('level_crash', this.analyticsLevel({ users: Math.round(gs.users) }));
     this.crashScreen.open({
       level: gs.level,
       levelName: level.name,
@@ -859,6 +887,7 @@ class ScaleArchitect {
   }
 
   onSpikeEnded(incident) {
+    account.log('incident', this.analyticsLevel({ kind: incident.kind, handled: Boolean(incident.handled) }));
     const revenue = Math.round(incident.revenue);
     const lost = Math.round(incident.lost);
     const what = { spike: 'spike', bots: 'bot attack', crash: 'crash' }[incident.kind] || 'incident';
