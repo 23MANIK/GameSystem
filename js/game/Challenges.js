@@ -316,6 +316,19 @@ export function evaluateChallenges(gs) {
   return { results, newlyDone, allDone, doneCount: results.filter(r => r.done).length };
 }
 
+/**
+ * Like evaluateChallenges, but read-only: nothing is latched. For UI that only
+ * displays progress (the Next step card), so showing a goal never changes
+ * when the game counts it as done.
+ */
+export function peekChallenges(gs) {
+  const results = getChallenges(gs.level).map(ch => {
+    const p = ch.progress(gs);
+    return { ...ch, ...p, done: gs.challengesDone.includes(ch.id) };
+  });
+  return { results, doneCount: results.filter(r => r.done).length };
+}
+
 /** A machine's CPU use scaled to a given number of users (load grows in step with users). */
 export function cpuAtUsers(gs, role, users) {
   const cpu = gs.serverStatus?.servers?.[role]?.usage?.cpu;

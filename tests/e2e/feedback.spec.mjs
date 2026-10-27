@@ -36,8 +36,9 @@ test('feedback: a server error is shown and the form stays', async ({ game, page
   await expect(d.locator('form')).toBeVisible();
 });
 
-test('feedback: works from the 💬 button during a game', async ({ game, page }) => {
+test('feedback: works from the ☰ menu during a game', async ({ game, page }) => {
   await game.newGame('guestbook');
+  await page.click('#hud-menu');
   await page.click('#hud-feedback');
   await expect(page.locator('dialog.fb-dialog')).toBeVisible();
 });

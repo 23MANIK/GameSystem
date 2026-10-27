@@ -11,7 +11,7 @@
  */
 
 import { LEVELS } from '../data/levels.js';
-import { evaluateChallenges } from '../game/Challenges.js';
+import { peekChallenges } from '../game/Challenges.js';
 
 const pendingIcon = icon => (/^[✅✔☑]/.test(icon || '') ? '🎯' : icon);
 const fmt = n => Math.round(n).toLocaleString();
@@ -60,7 +60,7 @@ export default class NextStep {
           ${playable ? `<button type="button" class="btn btn-primary ns-act" data-act="next">Start Level ${next.level} →</button>` : ''}`
       };
     }
-    const { results, doneCount } = evaluateChallenges(gs);
+    const { results, doneCount } = peekChallenges(gs);
     const pending = results.filter(c => !c.done);
     if (!pending.length) return null;
     const gp = this.hooks.goalsPanel;
