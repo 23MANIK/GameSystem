@@ -2,7 +2,16 @@
  * Scale Architect - Toast Notification System
  * Non-intrusive toast notification queue with type-specific cyberpunk badges,
  * auto-dismiss timers, manual dismissal, and maximum queue enforcement.
+ *
+ * Toasts never cover another pop-up's buttons: while a modal, bottom sheet or
+ * popover is open (see Layers.js) new toasts wait, and the newest of them show
+ * once it closes. A toast that waited longer than HOLD_MAX_MS is dropped (it is
+ * still in the Alerts tab).
  */
+
+import { toastsHeldBy, watchLayers } from './Layers.js';
+
+export const HOLD_MAX_MS = 30000;
 
 export default class Notifications {
   /**
@@ -13,6 +22,17 @@ export default class Notifications {
     this.container = container || document.getElementById('notifications-container');
     this.maxVisible = maxVisible;
     this.activeToasts = []; // Array of { element, timer }
+    this.held = []; // Waiting while another pop-up owns the screen: { message, type, duration, at }
+    watchLayers(({ held }) => { if (!held) this.flushHeld(); });
+  }
+
+  /** Show the newest waiting toasts (up to maxVisible) now that the screen is free. */
+  flushHeld() {
+    if (!this.held.length || toastsHeldBy()) return;
+    const now = Date.now();
+    const fresh = this.held.filter(t => now - t.at <= HOLD_MAX_MS).slice(-this.maxVisible);
+    this.held = [];
+    for (const t of fresh) this.show(t.message, t.type, t.duration);
   }
 
   /**
@@ -23,6 +43,11 @@ export default class Notifications {
    * @returns {HTMLElement} The created toast element
    */
   show(message, type = 'info', duration = 4000) {
+    if (toastsHeldBy()) {
+      this.held.push({ message, type, duration, at: Date.now() });
+      if (this.held.length > this.maxVisible) this.held.shift();
+      return null;
+    }
     if (!this.container) {
       this.container = document.getElementById('notifications-container');
       if (!this.container) {
@@ -140,6 +165,7 @@ export default class Notifications {
    * Dismiss all currently visible toasts immediately.
    */
   clear() {
+    this.held = [];
     for (const t of [...this.activeToasts]) {
       this.dismiss(t.element);
     }

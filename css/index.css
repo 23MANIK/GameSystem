@@ -127,7 +127,9 @@
   --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-spring: 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-  /* Z-Index Layer Stack */
+  /* Z-Index Layer Stack: every pop-up uses one of these (docs/popups/README.md).
+     Bottom to top: world, bars, side panel, coach cards, toasts, popovers,
+     modals, full screens, tooltips, crash. No raw numbers elsewhere. */
   --z-background: 0;
   --z-grid: 1;
   --z-canvas: 2;
@@ -137,11 +139,16 @@
   --z-ui: 100;
   --z-hud: 110;
   --z-nav: 110;
-  --z-panel: 200;
-  --z-modal: 300;
-  --z-overlay: 350;
-  --z-notification: 400;
-  --z-tooltip: 500;
+  --z-hud-extra: 120;   /* spike badge, busiest-part bars */
+  --z-panel: 200;       /* side panel / phone bottom sheet */
+  --z-coach: 300;       /* tutorial guide, Next step card */
+  --z-notification: 340; /* toasts */
+  --z-popover: 360;     /* ☰ menu, health, level card, money */
+  --z-modal: 400;       /* Server Builder, level intro, level complete */
+  --z-overlay: 400;     /* old name for --z-modal */
+  --z-screen: 450;      /* start screen, game picker, create screen */
+  --z-tooltip: 500;     /* (i) explanations: above everything they explain */
+  --z-crash: 600;
 }
 
 /* --- Global Reset & Base Rules --- */

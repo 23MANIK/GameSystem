@@ -489,7 +489,7 @@
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--accent-cyan-border);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), var(--glow-cyan);
-  z-index: 320; /* above the Server Builder modal, below level overlays */
+  z-index: var(--z-coach); /* hidden while the Server Builder is open: its tip shows inside */
 }
 
 .guide-bubble[hidden] { display: none; }
@@ -601,7 +601,7 @@
 .intro-screen {
   position: fixed;
   inset: 0;
-  z-index: 400;
+  z-index: var(--z-screen);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -760,7 +760,7 @@
 .product-screen {
   position: fixed;
   inset: 0;
-  z-index: 410; /* above the intro screen */
+  z-index: calc(var(--z-screen) + 10); /* above the intro screen */
   overflow-y: auto;
   background: radial-gradient(ellipse at 50% 0%, rgba(6, 214, 160, 0.08) 0%, var(--bg-primary) 60%);
   padding: 24px 16px 40px;
@@ -1044,7 +1044,7 @@
 
 .info-pop {
   position: fixed;
-  z-index: 500; /* above modals and level overlays */
+  z-index: var(--z-tooltip); /* above modals and level overlays */
   width: min(320px, calc(100vw - 24px));
   max-height: min(420px, calc(100dvh - 24px));
   overflow-y: auto;

@@ -50,7 +50,7 @@
 /* Drop-downs from the bar: menu and health details */
 .hud-pop {
   position: fixed;
-  z-index: 905;
+  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -97,7 +97,7 @@
   left: 16px;
   bottom: 80px;
   width: min(400px, calc(100vw - 32px));
-  z-index: 300;
+  z-index: var(--z-coach);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -291,7 +291,7 @@
     position: fixed;
     top: 64px;
     right: 8px;
-    z-index: 110;
+    z-index: var(--z-hud);
     height: 32px;
     padding: 0 10px 0 8px;
     background: rgba(10, 15, 28, 0.92);

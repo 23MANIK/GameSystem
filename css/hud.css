@@ -166,7 +166,7 @@
 .level-intro {
   position: fixed;
   inset: 0;
-  z-index: calc(var(--z-overlay, 900) + 5);
+  z-index: calc(var(--z-modal) + 5);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -280,7 +280,7 @@ body.level-intro-open .guide-bubble { display: none !important; }
 /* --- Level popover: grows out of the Lv card in the top bar --- */
 .level-pop {
   position: fixed;
-  z-index: 900; /* above the guide bubble and panels */
+  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   border-radius: 20px;

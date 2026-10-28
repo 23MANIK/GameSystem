@@ -15,7 +15,7 @@
 .pp-card.pp-community { border-color: var(--accent-magenta-border); }
 .pp-badge { background: var(--accent-magenta-dim); color: var(--text-primary); }
 
-.create-screen { z-index: 411; }
+.create-screen { z-index: calc(var(--z-screen) + 11); }
 .cg-inner { max-width: 640px; }
 
 .cg-card {
