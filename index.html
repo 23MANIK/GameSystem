@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="css/crash.css">
   <link rel="stylesheet" href="css/designgame.css">
   <link rel="stylesheet" href="css/mobile.css">
+  <link rel="stylesheet" href="css/v4.css">
 </head>
 <body>
   <div class="game-container" id="game-container">
@@ -58,6 +59,9 @@
         </div>
       </div>
     </div>
+
+    <!-- ═══════════════════ NEXT STEP (the one thing to do now) ═══════════════════ -->
+    <div class="next-step" id="next-step" role="region" aria-label="Next step" hidden></div>
 
     <!-- ═══════════════════ BOTTOM NAV ═══════════════════ -->
     <nav class="nav-bar" id="nav-bar">
@@ -106,7 +110,10 @@
         <div class="level-up-unlocks" id="level-up-unlocks">
           <!-- Unlocked items listed here -->
         </div>
-        <button class="btn btn-primary level-up-continue" id="level-up-continue">Continue</button>
+        <div class="level-up-actions">
+          <button class="btn btn-primary level-up-continue" id="level-up-continue">Continue</button>
+          <button type="button" class="level-up-stay" id="level-up-stay" hidden>Look around first</button>
+        </div>
       </div>
     </div>
 
@@ -129,17 +136,12 @@
           <p class="intro-subtitle">Build. Scale. Survive.</p>
         </div>
         <p class="intro-description">
-          Every big system starts as <strong>one machine</strong>. Pick its CPU, memory, storage and network,
-          launch a small app (a Guestbook, a link shortener like bit.ly, and more), and grow it to your first 100 users.
-          <br><br>
-          New parts of the system unlock level by level, from load balancers to caches to global scale.
+          Grow <strong>one machine</strong> into a system that serves millions, one level at a time.
         </p>
         <div class="intro-actions">
+          <button class="intro-continue-card" id="btn-continue-game" style="display:none">Continue</button>
           <button class="btn btn-primary btn-lg" id="btn-new-game">
-            <span>🚀</span> New Game
-          </button>
-          <button class="btn btn-secondary btn-lg" id="btn-continue-game" style="display:none">
-            <span>▶️</span> Continue
+            <span>🚀</span> Play
           </button>
         </div>
         <p class="intro-live" id="intro-live" hidden></p>

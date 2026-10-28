@@ -25,6 +25,7 @@ test('Home button saves and returns to the start screen; Continue resumes', asyn
   await game.newGame('guestbook');
   await page.click('#guide-skip');
   await game.run((g, gs) => { gs.coins = 4321; });
+  await page.click('#hud-menu');
   await page.click('#hud-home');
   await expect(page.locator('#btn-continue-game')).toBeVisible();
   await page.click('#btn-continue-game');

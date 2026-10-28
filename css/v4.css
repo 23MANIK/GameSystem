@@ -1,0 +1,319 @@
+/* ==========================================================================
+   V4 — MINIMAL UI
+   Rules: the next step is always on screen; primary things first, details one
+   tap away; say each thing once; one bright button per screen.
+   Loaded last, so it wins over the older layout files.
+   ========================================================================== */
+
+/* ─── Top bar: ☰ · level │ health · coins · users · speed ─── */
+.hud-v4 .hud-left { flex: 1 1 auto; gap: var(--space-2); }
+.hud-v4 .hud-right { flex: 0 0 auto; gap: var(--space-2); }
+.hud-v4 .hud-speed { margin-right: 0; }
+.hud-menu-btn { font-size: 18px; color: var(--text-primary); }
+.hud-menu-btn.open { border-color: var(--accent-cyan-border); background: var(--accent-cyan-dim); }
+.hud-v4 .hud-levelcard-name { max-width: 240px; }
+.hud-v4 .hud-levelcard .hud-goal { min-width: 120px; }
+.hud-v4 .hud-stat.users .value small { color: var(--text-muted); font-weight: 600; }
+.hud-v4 .hud-stat.users .value.hud-over { color: var(--accent-red); }
+
+/* Health chip: a dot, four tiny bars, and the one thing that needs attention */
+.hud-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px 0 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font: 600 12px var(--font-mono, monospace);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  --hc: var(--text-muted);
+}
+.hud-health:hover, .hud-health.open { border-color: var(--hc); }
+.hud-health[data-health="good"] { --hc: var(--accent-cyan); }
+.hud-health[data-health="warn"] { --hc: var(--accent-amber); color: var(--accent-amber); border-color: rgba(251, 191, 36, 0.45); }
+.hud-health[data-health="bad"] { --hc: var(--accent-red); color: #fca5a5; border-color: var(--accent-red-border); background: var(--accent-red-dim); }
+.hc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hc); flex: none; }
+.hud-health[data-health="bad"] .hc-dot { animation: hc-pulse 1.2s ease-in-out infinite; }
+@keyframes hc-pulse { 50% { opacity: 0.35; } }
+.hc-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
+.hc-bar { width: 4px; height: 100%; border-radius: 2px; background: rgba(255, 255, 255, 0.08); display: flex; align-items: flex-end; overflow: hidden; }
+.hc-bar i { display: block; width: 100%; height: 8%; background: var(--accent-cyan); border-radius: 2px; transition: height 0.4s ease; }
+.hc-bar.warn i { background: var(--accent-amber); }
+.hc-bar.over i { background: var(--accent-red); }
+.hud-health[data-health="idle"] { display: none; } /* shows up once there is a server */
+
+/* Drop-downs from the bar: menu and health details */
+.hud-pop {
+  position: fixed;
+  z-index: 905;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid var(--border-glass-bright);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  animation: level-pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+.hud-pop[hidden] { display: none; }
+.hud-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-primary);
+  font: 500 14px var(--font-body, inherit);
+  text-align: left;
+  cursor: pointer;
+}
+.hud-menu-item span { display: flex; flex-direction: column; }
+.hud-menu-item small { font-size: 11px; color: var(--text-muted); }
+.hud-menu-item:hover, .hud-menu-item:focus-visible { background: rgba(255, 255, 255, 0.06); outline: none; }
+
+.hud-health-pop { gap: 10px; padding: 14px 16px 16px; }
+.hh-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-primary); }
+.hud-health-pop .hud-busiest-bars { display: grid !important; grid-template-columns: 1fr !important; gap: 8px !important; }
+.hud-health-pop .hud-res { display: grid; grid-template-columns: 44px 1fr 44px !important; gap: 10px !important; align-items: center; font-size: 12px !important; }
+.hud-health-pop .hud-res-track { height: 6px; }
+.hud-health-pop .hud-res-pct { text-align: right; }
+.hh-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-secondary); padding-top: 6px; border-top: 1px solid var(--border-glass); }
+.hh-row strong { font-family: var(--font-mono, monospace); color: var(--text-primary); }
+.hh-act { min-height: 40px; margin-top: 2px; }
+.hh-act[hidden] { display: none; }
+
+/* ─── Next step card: where the guide sits, when the guide is quiet ─── */
+.next-step {
+  position: fixed;
+  left: 16px;
+  bottom: 80px;
+  width: min(400px, calc(100vw - 32px));
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-glass-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--accent-cyan-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  animation: ns-in 0.3s ease-out;
+}
+.next-step[hidden] { display: none; }
+@keyframes ns-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ns-body { display: flex; flex-direction: column; gap: 6px; cursor: pointer; min-width: 0; }
+.ns-body:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 4px; border-radius: 6px; }
+.ns-kicker { font: 600 10px var(--font-title); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-cyan); }
+.ns-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; min-width: 0; }
+.ns-label { font-size: 14px; color: var(--text-primary); min-width: 0; }
+.ns-val { flex: none; font: 600 12px var(--font-mono, monospace); color: var(--text-secondary); }
+.ns-bar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.ns-bar i { display: block; height: 100%; background: var(--accent-cyan); border-radius: 3px; transition: width 0.4s ease; }
+.ns-act { min-height: 40px; width: 100%; }
+.next-step.ns-complete { border-color: rgba(251, 191, 36, 0.5); }
+.next-step.ns-complete .ns-kicker { color: var(--accent-amber); }
+
+/* ─── Start screen: Continue first ─── */
+.intro-description { max-width: 420px; }
+.intro-version { display: none; }
+.intro-actions { flex-direction: column; align-items: stretch; width: min(360px, 100%); margin-inline: auto; }
+.intro-continue-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--accent-cyan-border);
+  background: linear-gradient(165deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  color: var(--text-primary);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 0 0 rgba(6, 214, 160, 0);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.intro-continue-card:hover, .intro-continue-card:focus-visible { border-color: var(--accent-cyan); box-shadow: var(--glow-cyan); outline: none; }
+.ic-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.ic-name { font-weight: 700; }
+.ic-step { font: 600 12px var(--font-mono, monospace); color: var(--text-secondary); white-space: nowrap; }
+.ic-level { font-size: 13px; color: var(--text-secondary); }
+.ic-bar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.ic-bar i { display: block; height: 100%; background: var(--accent-cyan); }
+.ic-go {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  border-radius: var(--radius-md);
+  background: var(--accent-cyan);
+  color: #03231a;
+  font: 800 14px var(--font-title);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* With a save, New game turns into a quiet second button */
+.intro-screen.has-save #btn-new-game {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-glass-bright);
+  box-shadow: none;
+  font-size: 13px;
+  min-height: 44px;
+}
+.intro-screen.has-save #btn-new-game:hover { color: var(--text-primary); border-color: var(--accent-cyan-border); }
+.intro-feedback { border: 0; text-decoration: underline; text-underline-offset: 3px; }
+
+/* ─── Choose a game ─── */
+.pp-card { position: relative; }
+.pp-card.pp-start { border-color: var(--accent-cyan); box-shadow: 0 0 0 1px var(--accent-cyan), var(--glow-cyan); }
+.pp-card.pp-saved { border-color: var(--accent-cyan-border); }
+.pp-flag {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--accent-cyan);
+  color: #03231a;
+  font: 700 9px var(--font-title);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pp-flag-saved { background: var(--bg-elevated); color: var(--accent-cyan); border: 1px solid var(--accent-cyan-border); }
+.pp-diff-saved { background: var(--accent-cyan-dim); color: var(--accent-cyan); }
+.pp-soon { width: 100%; margin-top: var(--space-3); }
+.pp-soon summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-glass-bright);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+}
+.pp-soon summary::-webkit-details-marker { display: none; }
+.pp-soon summary::after { content: '▸'; margin-left: auto; transition: transform 0.2s ease; }
+.pp-soon[open] summary::after { transform: rotate(90deg); }
+.pp-soon-names { color: var(--text-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pp-soon .pp-grid { margin-top: var(--space-3); }
+
+/* ─── Level complete: result, reward, go ─── */
+.lc-v4 .level-up-content { gap: var(--space-3); }
+.lc-v4 .level-up-number { font-size: 56px; }
+.lc-v4 .level-complete-message { font-size: 14px; }
+.lc-v4 .lc-funding { margin-bottom: 0; }
+.lc-key { grid-template-columns: repeat(3, 1fr) !important; margin-bottom: 0; }
+.lc-key strong { font-size: 18px; }
+.lc-more { text-align: left; }
+.lc-more > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 0;
+  list-style: none;
+}
+.lc-more > summary::-webkit-details-marker { display: none; }
+.lc-more > summary::after { content: ' ▸'; }
+.lc-more[open] > summary::after { content: ' ▾'; }
+.lc-all > summary { text-align: center; }
+.lc-all .lc-stats { margin-top: 6px; }
+.lc-next { font-size: 13px; color: var(--text-secondary); }
+.lc-next strong { color: var(--text-primary); }
+.level-up-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 0 var(--space-4);
+  background: linear-gradient(to bottom, rgba(5, 8, 15, 0), rgba(5, 8, 15, 0.96) 30%);
+}
+.level-up-actions .level-up-continue { position: static; margin: 0; box-shadow: none; width: 100%; min-height: 48px; }
+.level-up-stay {
+  min-height: 40px;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: 500 13px var(--font-body, inherit);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.level-up-stay:hover { color: var(--text-primary); }
+.level-up-stay[hidden] { display: none; }
+
+/* ─── Laptops: tighter bar ─── */
+@media (max-width: 1100px) {
+  .hud-v4 .hud-levelcard-name { max-width: 150px; }
+  .hud-v4 .hud-stat.coins .hud-stat-icon, .hud-v4 .hud-stat.users .hud-stat-icon { display: none; }
+}
+@media (max-width: 860px) {
+  .hud-v4 .hud-levelcard .hud-goal { min-width: 70px; }
+  .hc-text { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* ─── Phones ─── */
+@media (max-width: 600px) {
+  .hud-v4 { gap: 6px; }
+  .hud-v4 .hud-left { gap: 6px; min-width: 0; }
+  .hud-v4 .hud-right { gap: 5px; }
+  .hud-v4 .hud-levelcard { flex: 1 1 auto; min-width: 0; padding: 0 10px 0 4px; }
+  .hud-v4 .hud-levelcard-body { display: flex; min-width: 0; }
+  .hud-v4 .hud-levelcard-name { max-width: none; font-size: 11px; }
+  .hud-v4 .hud-levelcard .hud-goal { min-width: 0; }
+  .hud-v4 .hud-goal-text { display: none; }
+  .hud-v4 .hud-lv { height: 30px; padding: 0 8px; font-size: 12px; }
+  .hud-v4 .hud-stat .label { display: none; }
+  .hud-v4 .hud-stat .value { font-size: 12px; }
+  .hud-v4 .hud-stat .value small { font-size: 10px; }
+  .hud-v4 .hud-speed { min-width: 36px; }
+
+  /* The health chip floats just under the bar, top right of the map */
+  .hud-health {
+    position: fixed;
+    top: 64px;
+    right: 8px;
+    z-index: 110;
+    height: 32px;
+    padding: 0 10px 0 8px;
+    background: rgba(10, 15, 28, 0.92);
+    font-size: 11px;
+  }
+  body.sheet-open .hud-health { visibility: hidden; }
+  .hud-spike-wrap { top: 64px; left: 8px; transform: none; }
+  .notification-container { top: 104px; }
+
+  .next-step {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    bottom: calc(68px + var(--safe-bottom));
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .ns-label { font-size: 13px; }
+
+  .lc-key strong { font-size: 15px; }
+  .lc-v4 .level-up-number { font-size: 44px; }
+}
+@media (max-width: 360px) {
+  .hud-v4 .hud-stat.users { display: none; }
+}
