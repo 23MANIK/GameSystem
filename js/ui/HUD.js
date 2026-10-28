@@ -5,7 +5,7 @@ import { openFeedback } from './Feedback.js';
  * The bar holds only what a player checks every few seconds:
  *   ☰ menu · level + goal progress · coins · users / limit · speed
  * Everything else is one tap away:
- *   - ☰ menu: Home, all levels, money, feedback
+ *   - ☰ menu: Home, all levels, money, feedback, Google sign-in
  *   - health chip (#hud-resources): the one thing that needs attention now,
  *     with four tiny bars; tap it for CPU / RAM / Disk / Network, latency and
  *     reputation in full.
@@ -16,6 +16,7 @@ import { PART_ORDER, SERVER_PARTS } from '../data/serverParts.js';
 import { ROLES } from '../data/roles.js';
 import { getChallenges } from '../game/Challenges.js';
 import { infoButton } from './InfoTips.js';
+import account from '../firebase/account.js';
 
 /** Health worse than this is called out on the chip. */
 const BUSY = 0.8;
@@ -81,7 +82,8 @@ export default class HUD {
       <button type="button" role="menuitem" class="hud-menu-item" id="hud-home">🏠 <span>Home<small>Your game is saved</small></span></button>
       <button type="button" role="menuitem" class="hud-menu-item" id="hud-menu-levels">🗺️ <span>All levels<small>Story, roadmap, blueprint</small></span></button>
       <button type="button" role="menuitem" class="hud-menu-item" id="hud-menu-money">💰 <span>Money<small>Where coins come from and go</small></span></button>
-      <button type="button" role="menuitem" class="hud-menu-item" id="hud-feedback">💬 <span>Send feedback</span></button>`;
+      <button type="button" role="menuitem" class="hud-menu-item" id="hud-feedback">💬 <span>Send feedback</span></button>
+      <button type="button" role="menuitem" class="hud-menu-item" id="hud-menu-account" hidden></button>`;
     document.body.appendChild(this.menuPop);
     this.menuPop.addEventListener('click', (e) => {
       const item = e.target.closest('.hud-menu-item');
@@ -91,7 +93,10 @@ export default class HUD {
       if (item.id === 'hud-menu-levels') this.gameState.emit('openLevel', {});
       if (item.id === 'hud-menu-money') this.gameState.emit('openMoney', {});
       if (item.id === 'hud-feedback') openFeedback(`in game, level ${this.gameState.level}`);
+      if (item.id === 'hud-menu-account') this.gameState.emit('accountMenu', { signedIn: Boolean(account.user) });
     });
+    this.renderAccountItem();
+    this.offAccount = account.onChange(() => this.renderAccountItem());
 
     const bars = PART_ORDER.map(partId => {
       const part = SERVER_PARTS[partId];
@@ -146,6 +151,18 @@ export default class HUD {
     if (this.healthPop) this.healthPop.hidden = true;
     document.getElementById('hud-menu')?.classList.remove('open');
     document.getElementById('hud-resources')?.classList.remove('open');
+  }
+
+  /** Menu item: "Sign in with Google", or who is signed in (tap to sign out). */
+  renderAccountItem() {
+    const item = this.menuPop?.querySelector('#hud-menu-account');
+    if (!item) return;
+    item.hidden = !account.enabled || !account.ready;
+    const esc = t => String(t).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+    const u = account.user;
+    item.innerHTML = u
+      ? `☁️ <span>${esc(u.name || u.email)}<small>Progress saved to your account · tap to sign out</small></span>`
+      : `🔑 <span>Sign in with Google<small>Save your progress, play on any device</small></span>`;
   }
 
   toggleMenu() {
@@ -391,6 +408,7 @@ export default class HUD {
   destroy() {
     if (this.container) this.container.innerHTML = '';
     this.menuPop?.remove();
+    this.offAccount?.();
     this.healthPop?.remove();
   }
 }

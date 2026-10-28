@@ -384,3 +384,22 @@ body.level-intro-open .guide-bubble { display: none !important; }
   background: rgba(251, 191, 36, 0.1);
 }
 .hud-center { display: flex; align-items: center; }
+
+/* ─── Account: Google sign-in on the start screen ─── */
+.intro-account[hidden] { display: none; }
+.intro-account { margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.acct-google { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px; border-radius: 999px;
+  border: 1px solid #dadce0; background: #fff; color: #1f1f1f; font: 600 14px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; cursor: pointer; }
+.acct-google:hover { background: #f7f8f8; }
+.acct-google:disabled { opacity: 0.6; cursor: default; }
+.acct-chip { display: inline-flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(6,214,160,0.35); max-width: 100%; }
+.acct-avatar { width: 32px; height: 32px; border-radius: 50%; flex: none; object-fit: cover; }
+.acct-initial { display: grid; place-items: center; background: #06d6a0; color: #052e22; font-weight: 700; }
+.acct-who { display: flex; flex-direction: column; text-align: left; min-width: 0; font-size: 13px; }
+.acct-who strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+.acct-who small { color: var(--text-secondary); font-size: 11px; }
+.acct-out { background: none; border: 1px solid rgba(255,255,255,0.18); color: var(--text-secondary); border-radius: 999px;
+  min-height: 32px; padding: 0 12px; font-size: 12px; cursor: pointer; }
+.acct-out:hover { color: var(--text-primary); }
+.acct-note { margin: 0; font-size: 12px; color: var(--text-secondary); max-width: 320px; }
