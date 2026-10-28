@@ -34,3 +34,12 @@ test('toDate reads Firestore timestamps', () => {
   assert.equal(toDate({ toDate: () => new Date(5) }).getTime(), 5);
   assert.equal(toDate({ __ts: 'server' }), null);
 });
+
+test('cleanProfile keeps a valid UPI ID (tidied) and refuses a malformed one', () => {
+  assert.equal(cleanProfile({ name: 'a', upi: ' Ada.L@OkAxis ' }).profile.upi, 'ada.l@okaxis');
+  assert.equal(cleanProfile({ name: 'a', upi: '9876543210@ybl' }).error, '');
+  assert.equal(cleanProfile({ name: 'a' }).profile.upi, '');
+  for (const bad of ['ada', 'ada@', '@okaxis', 'ada@ok axis!', 'a@b@c']) {
+    assert.match(cleanProfile({ name: 'a', upi: bad }).error, /UPI ID/, bad);
+  }
+});

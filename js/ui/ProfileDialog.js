@@ -1,6 +1,6 @@
 /**
  * ProfileDialog — the signed-in player's profile: picture, name, what they do,
- * a short bio, their progress, and Sign out / Delete account.
+ * a short bio, an optional UPI ID, their progress, and Sign out / Delete account.
  * Opened from the ☰ menu in the game or the account chip on the start screen.
  */
 
@@ -46,6 +46,9 @@ function build() {
       </label>
       <label class="pf-label">About you <small class="pf-count"></small>
         <textarea name="bio" rows="3" maxlength="${LIMITS.bio}" placeholder="What are you learning? (optional)"></textarea>
+      </label>
+      <label class="pf-label">UPI ID <small>optional · only you can see it · filled in for you when the game asks for one</small>
+        <input name="upi" maxlength="${LIMITS.upi}" placeholder="name@bank" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="email">
       </label>
       <p class="fb-status pf-status" role="status"></p>
       <button type="submit" class="btn btn-primary fb-send pf-save">Save profile</button>
@@ -119,6 +122,7 @@ function build() {
     form.elements.name.value = saved?.name || u.name || '';
     form.elements.title.value = saved?.title || '';
     bio.value = saved?.bio || '';
+    form.elements.upi.value = saved?.upi || '';
     pick = { avatar: saved?.avatar || 'google', photo: saved?.photo || '' };
     if (pick.avatar === 'google' && !u.photoURL) pick.avatar = 'emoji:' + PRESET_AVATARS[0];
     status.textContent = '';

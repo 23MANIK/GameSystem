@@ -62,6 +62,7 @@ Firestore `profiles/{uid}` (only that player; kept apart from the save so a pict
 | field | meaning |
 |---|---|
 | `name`, `title`, `bio` | shown name (1–40 chars), what they do (≤ 60), about them (≤ 280) |
+| `upi` | optional UPI ID (`name@bank`, lower case). Any form that asks for a UPI ID calls `fillUpiInput(input)` from `js/firebase/profile.js` to fill it in |
 | `avatar` | `google`, `upload`, or `emoji:<emoji>` (a preset) |
 | `photo` | an uploaded picture, cropped to 192×192 JPEG in the browser, as a `data:` URL (< 100 KB) |
 | `updatedAt` | last save |

@@ -1,6 +1,7 @@
 /**
  * profile.js — the signed-in player's profile: the name and picture the game
- * shows, a title ("what you do") and a short bio.
+ * shows, a title ("what you do"), a short bio, and an optional UPI ID that
+ * fills itself in wherever the game asks for one (fillUpiInput).
  *
  * Stored in Firestore at profiles/{uid}, apart from the save in users/{uid}
  * so an uploaded picture never pushes a big save over Firestore's 1 MB limit.
@@ -10,14 +11,17 @@
  * upload is cropped and shrunk in the browser to a small JPEG and kept in the
  * profile itself, so no Firebase Storage (and no paid plan) is needed.
  *
- * profiles/{uid} = { name, title, bio, avatar, photo, updatedAt }
+ * profiles/{uid} = { name, title, bio, upi, avatar, photo, updatedAt }
  *   avatar: 'google' | 'upload' | 'emoji:<emoji>'
  *   photo:  the uploaded picture as a data: URL (only when avatar is 'upload')
  */
 
 import account from './account.js';
 
-export const LIMITS = { name: 40, title: 60, bio: 280, photo: 100_000 };
+export const LIMITS = { name: 40, title: 60, bio: 280, upi: 100, photo: 100_000 };
+
+/** A UPI ID (VPA) looks like name@bank, e.g. ada.l@okaxis or 9876543210@ybl. */
+export const UPI_PATTERN = /^[a-z0-9][a-z0-9._-]{1,63}@[a-z][a-z0-9]{1,31}$/;
 export const PHOTO_SIZE = 192;   // uploaded pictures are cropped to a square this big (px)
 
 export const PRESET_AVATARS = ['🧑‍💻', '👩‍💻', '🦊', '🐙', '🦉', '🐧', '🤖', '🚀', '⚡', '🛰️', '🧠', '🏗️'];
@@ -36,11 +40,13 @@ export function cleanProfile(p = {}) {
     name: clean(p.name, LIMITS.name),
     title: clean(p.title, LIMITS.title),
     bio: String(p.bio ?? '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, LIMITS.bio),
+    upi: String(p.upi ?? '').replace(/\s+/g, '').toLowerCase().slice(0, LIMITS.upi),
     avatar: 'google',
     photo: ''
   };
   let error = '';
   if (!profile.name) error = 'Please enter a name.';
+  else if (profile.upi && !UPI_PATTERN.test(profile.upi)) error = 'That UPI ID doesn\'t look right. It looks like name@bank, e.g. ada@okaxis.';
   if (typeof p.avatar === 'string' && p.avatar.startsWith('emoji:') && PRESET_AVATARS.includes(p.avatar.slice(6))) {
     profile.avatar = p.avatar;
   } else if (p.avatar === 'upload') {
@@ -173,6 +179,23 @@ class Profiles {
       try { fn(this.view()); } catch (err) { console.error(err); }
     }
   }
+}
+
+/**
+ * Fill a UPI ID box from the signed-in player's profile, if they saved one and
+ * the box is still empty. Any form that asks for a UPI ID should call this.
+ * Loads the profile if needed. @returns {Promise<boolean>} whether it filled it
+ */
+export async function fillUpiInput(input) {
+  if (!input || !account.user) return false;
+  if (profiles.uid !== account.user.uid) {
+    try { await profiles.load(); } catch { return false; }
+  }
+  const upi = profiles.data?.upi;
+  if (!upi || input.value) return false;
+  input.value = upi;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
 }
 
 /** A Firestore Timestamp (or millis) as a Date, or null. */
