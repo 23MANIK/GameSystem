@@ -240,5 +240,15 @@ class Account {
   }
 }
 
+/** A sign-in error, in words a player can act on (the Firebase code stays in the console). */
+export function signInErrorMessage(err) {
+  const code = err?.code || '';
+  if (code === 'auth/popup-blocked') return 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.';
+  if (code === 'auth/network-request-failed') return 'Sign-in needs an internet connection. Check it and try again.';
+  if (code === 'auth/operation-not-allowed') return 'Google sign-in is not switched on for this game yet. (Firebase: Authentication → Sign-in method → Google.)';
+  if (code === 'auth/unauthorized-domain') return 'Sign-in is not allowed on this web address yet. (Firebase: Authentication → Settings → Authorized domains.)';
+  return `Sign-in didn't work${code ? ` (${code.replace('auth/', '')})` : ''}. Try again in a moment.`;
+}
+
 export const account = new Account();
 export default account;

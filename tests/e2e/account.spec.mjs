@@ -141,3 +141,11 @@ test('a closed sign-in popup leaves the player signed out without an error', asy
   await expect(page.locator('.acct-google')).toBeEnabled();
   await expect(page.getByTestId('account-signed-in')).toBeHidden();
 });
+
+test('a sign-in refused by Firebase says why', async ({ game, page }) => {
+  await fakeFirebase(page, new Map(), { __error: 'auth/operation-not-allowed' });
+  await game.home();
+  await page.click('.acct-google');
+  await expect(page.locator('#intro-account')).toContainText('Google sign-in is not switched on');
+  await expect(page.locator('.acct-google')).toBeEnabled();
+});
