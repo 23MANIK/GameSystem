@@ -53,7 +53,7 @@ In a terminal tab (the user can watch it), run from the repo:
 ```bash
 bash tools/deploy-dev.sh v2      # or the branch the user named
 ```
-It builds from a clean checkout of the pushed branch, so push first. Then smoke-test https://scale-architect-dev.vercel.app with `curl`:
+It builds from a clean checkout of the pushed branch, so push first. For production, deploy through `bash tools/vercel-deploy.sh --prod` (never a bare `npx vercel`): it tags the deploy with its git version, commit and branch. Then smoke-test https://scale-architect-dev.vercel.app with `curl`:
 - `/`, `/js/main.js` and `/css/mobile.css` return 200.
 - The page title is "Scale Architect — System Design Game".
 

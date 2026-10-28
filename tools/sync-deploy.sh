@@ -5,7 +5,7 @@
 # git repo, so `npx vercel` there deploys the game and nothing else.
 #
 #   bash tools/sync-deploy.sh            # refresh the copy
-#   cd /Users/Shared/scale-architect && npx vercel --prod   # then deploy
+#   bash tools/vercel-deploy.sh --prod   # then deploy (tags version, commit, branch)
 set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -27,4 +27,4 @@ cp "$SRC/docs/designgame/data-pack-format.md" "$DEST/docs/designgame/"
 cp "$SRC/.claude/skills/design-product-levels/reference/engine-capabilities.md" "$DEST/docs/designgame/"
 
 echo "Game copied to $DEST"
-echo "Deploy with:  cd $DEST && npx vercel --prod"
+echo "Deploy with:  bash tools/vercel-deploy.sh --prod   (tags the deploy with its version)"
