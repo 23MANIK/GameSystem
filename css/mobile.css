@@ -27,7 +27,7 @@
   .hud-levelcard { height: 44px; padding: 0 6px; }
   .hud-levelcard-body { display: none; }
   .hud-lv { height: 34px; font-size: 13px; padding: 0 12px; }
-  .hud-spike-wrap { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 120; }
+  .hud-spike-wrap { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: var(--z-hud-extra); }
 
   /* --- Bottom tab bar: room for the home indicator, big targets --- */
   .nav-bar { height: calc(60px + var(--safe-bottom)); padding: 0 8px var(--safe-bottom); }
@@ -202,7 +202,7 @@
     top: 56px;
     left: 0;
     right: 0;
-    z-index: 110;
+    z-index: var(--z-hud);
     flex-direction: row;
     align-items: center;
     gap: 8px;

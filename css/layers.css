@@ -1,0 +1,33 @@
+/* ═══════════════════════════════════════════════════════════════
+   Pop-up layers and safe zones (docs/popups/README.md)
+   Loaded last. js/ui/Layers.js sets the body classes used here.
+
+   Safe zones, so pop-ups that can show at the same time never share space:
+     top    : top bar, then toasts right under it
+     bottom : coach cards (guide or Next step, never both) above the bottom bar
+     right  : side panel on desktop; toasts move to its left
+     popovers hang from the button that opened them; modals take the screen
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Toasts: top-right under the top bar on desktop (the bottom belongs to the coach cards) */
+@media (min-width: 601px) {
+  .notification-container {
+    top: 72px;
+    bottom: auto;
+    right: 24px;
+    left: auto;
+    width: min(380px, calc(100vw - 48px));
+  }
+  .notification-container .toast { min-width: 0; max-width: none; width: 100%; box-sizing: border-box; }
+  /* Side panel open: toasts sit just left of it, never over its ✕ */
+  body.sheet-open .notification-container { right: calc(min(380px, 100vw - 20px) + 16px); }
+}
+
+/* Rule 1: one thing talks at a time. While a modal, sheet, popover or (i)
+   tooltip owns the screen, toasts wait (Notifications.js) and any toast
+   already showing steps out of sight. */
+body.toasts-held .notification-container { visibility: hidden; }
+
+/* Rule 2: coach cards step aside while a big popover is open */
+body.layer-popover .guide-bubble,
+body.layer-popover .next-step { visibility: hidden; }

@@ -403,9 +403,12 @@ export default class SystemDiagram {
     if (nothing) {
       this.emptyEl.innerHTML = '<div class="sd-empty-icon">🏗️</div><strong>No servers yet</strong><span>Tap <b>Server</b> below to build your first machine.</span>';
     }
-    // Phone: the hint goes just under the Users card instead of on top of it
+    // The hint goes just under the Users card instead of on top of it (and its (i) button)
     const u = this.nodes.users;
-    this.emptyEl.style.top = nothing && vertical && u ? `${u.y + u.h / 2 + 24}px` : '';
+    const under = nothing && u;
+    this.emptyEl.style.top = under ? `${u.y + u.h / 2 + 24}px` : '';
+    this.emptyEl.style.left = under ? `${u.x}px` : '';
+    this.emptyEl.style.transform = under ? 'translate(-50%, 0)' : '';
   }
 
   resizeCanvas(W, H) {

@@ -34,6 +34,7 @@ import CreateGame from './ui/CreateGame.js';
 import { ensureGame, isGeneratedId, savedProductId, linkedGameId } from './designgame/client.js';
 import CrashScreen from './ui/CrashScreen.js';
 import NextStep from './ui/NextStep.js';
+import { openPopover, watchLayers } from './ui/Layers.js';
 
 // Seconds of game time at 0 coins, losing money, before the system crashes
 const CRASH_AFTER_SECONDS = 40;
@@ -289,6 +290,8 @@ class ScaleArchitect {
     this.levelIntro = new LevelIntro();
     // The guide re-renders on tutorial changes; the Next step card follows it
     this.tutorial.onChange(() => setTimeout(() => this.nextStep.update(), 0));
+    // A popover opening or closing moves the Next step card aside or back
+    watchLayers(() => this.nextStep.update());
   }
 
   /** The Next step card hides while something else is guiding the player. */
@@ -301,7 +304,8 @@ class ScaleArchitect {
       document.body.classList.contains('builder-open') ||
       document.body.classList.contains('level-intro-open') ||
       overlay?.classList.contains('active') ||
-      this.serverBuilder?.isOpen
+      this.serverBuilder?.isOpen ||
+      Boolean(openPopover())
     );
   }
 
