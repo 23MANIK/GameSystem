@@ -17,6 +17,25 @@ Rollback point for production: https://scale-architect-bbg43z1sn-23maniks-projec
 
 Rule: every change goes to the dev site first, and to production only after Nikhil checks it.
 
+## All links
+
+| What | Link | Version |
+| --- | --- | --- |
+| Production site | https://scale-architect.vercel.app | V2 |
+| Dev site | https://scale-architect-dev.vercel.app | V4 + PRs #21, #22, #23 |
+| V2 preview | https://scale-architect-enku267uo-23maniks-projects.vercel.app | V2 |
+| Current production deploy | https://scale-architect-j6acssizx-23maniks-projects.vercel.app | V2 |
+| Current dev deploy | https://scale-architect-qjaw5pva0-23maniks-projects.vercel.app | V4 + PRs #21, #22, #23 |
+| V1 rollback deploy | https://scale-architect-bbg43z1sn-23maniks-projects.vercel.app | V1 |
+| Vercel: production project | https://vercel.com/23maniks-projects/scale-architect | |
+| Vercel: dev project | https://vercel.com/23maniks-projects/scale-architect-dev | |
+| GitHub repo | https://github.com/23MANIK/GameSystem | |
+| Branches | [v1](https://github.com/23MANIK/GameSystem/tree/v1) · [v2](https://github.com/23MANIK/GameSystem/tree/v2) · [v3](https://github.com/23MANIK/GameSystem/tree/v3) · [v4](https://github.com/23MANIK/GameSystem/tree/v4) | |
+| Open pull requests | https://github.com/23MANIK/GameSystem/pulls | |
+| Project activity page | https://claude.ai/artifact/Te9rhyANNMqPtYSgVEaFGL | |
+
+Preview and deploy links (the `…-23maniks-projects.vercel.app` ones) need a Vercel login.
+
 ## V1: the first game (retired)
 
 - **Branch:** `v1` (frozen, do not change). `master` holds only the initial commit.
@@ -64,4 +83,4 @@ Rule: every change goes to the dev site first, and to production only after Nikh
 
 ## Keeping this file up to date
 
-Update this file whenever a version is created, a PR is merged, or something is deployed to production, dev or preview.
+Update this file (and the Project activity page) whenever a version is created, a PR is merged, or something is deployed to production, dev or preview.
