@@ -34,7 +34,7 @@ import CreateGame from './ui/CreateGame.js';
 import { ensureGame, isGeneratedId, savedProductId, linkedGameId } from './designgame/client.js';
 import CrashScreen from './ui/CrashScreen.js';
 import NextStep from './ui/NextStep.js';
-import account from './firebase/account.js';
+import account, { signInErrorMessage } from './firebase/account.js';
 import AccountChip from './ui/AccountChip.js';
 
 // Seconds of game time at 0 coins, losing money, before the system crashes
@@ -578,9 +578,7 @@ class ScaleArchitect {
       }
     } catch (err) {
       console.warn('Sign-in failed:', err);
-      this.notifications.show(err?.code === 'auth/popup-blocked'
-        ? 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.'
-        : 'Sign-in didn\'t work. Check your connection and try again.', 'error', 6000);
+      this.notifications.show(signInErrorMessage(err), 'error', 6000);
     }
   }
 

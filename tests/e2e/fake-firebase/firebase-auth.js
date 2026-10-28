@@ -17,6 +17,7 @@ export function onAuthStateChanged(auth, fn) {
 export async function signInWithPopup() {
   const u = window.__FAKE_GOOGLE_USER__;
   if (!u) { const e = new Error('closed'); e.code = 'auth/popup-closed-by-user'; throw e; }
+  if (u.__error) { const e = new Error(u.__error); e.code = u.__error; throw e; }
   current = u;
   localStorage.setItem(KEY, JSON.stringify(u));
   notify();

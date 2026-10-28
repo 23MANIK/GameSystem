@@ -165,3 +165,11 @@ test('the ☰ menu has no sign-in item when Firebase is off', async ({ game, pag
   await page.click('#hud-menu');
   await expect(page.locator('#hud-menu-account')).toBeHidden();
 });
+
+test('a sign-in refused by Firebase says why', async ({ game, page }) => {
+  await fakeFirebase(page, new Map(), { __error: 'auth/operation-not-allowed' });
+  await game.home();
+  await page.click('.acct-google');
+  await expect(page.locator('#intro-account')).toContainText('Google sign-in is not switched on');
+  await expect(page.locator('.acct-google')).toBeEnabled();
+});
