@@ -4,7 +4,11 @@ Players can sign in with Google on the start screen or from the in-game ☰ menu
 saved to their account and loads on any device. Gameplay events go to Google
 Analytics for Firebase for everyone (signed in or not). Signing in is optional.
 
-Code: `js/firebase/` (config, account, save merge rules), `js/ui/AccountChip.js`,
+Signed-in players also have a **profile** (☰ menu → their name, or their name on the start
+screen): name, picture (Google photo, a preset avatar, or an upload), what they do, a short bio,
+their progress, Sign out and Delete account.
+
+Code: `js/firebase/` (config, account, save merge rules, profile), `js/ui/AccountChip.js`, `js/ui/ProfileDialog.js`,
 hooks in `js/main.js`. Security rules: `firebase/firestore.rules`.
 Set `FIREBASE_CONFIG` in `js/firebase/config.js` to `null` to turn all of this off. Browser tests run with it off (see `tests/e2e/fixtures.mjs`) except `account.spec.mjs`, which uses a fake SDK.
 
@@ -53,6 +57,19 @@ New events show in *Analytics → Realtime* / *DebugView* within minutes and in
 reports after about a day. To filter reports by these parameters, register them
 under *Analytics → Custom definitions*.
 
+Firestore `profiles/{uid}` (only that player; kept apart from the save so a picture never pushes the save past Firestore's 1 MB document limit):
+
+| field | meaning |
+|---|---|
+| `name`, `title`, `bio` | shown name (1–40 chars), what they do (≤ 60), about them (≤ 280) |
+| `avatar` | `google`, `upload`, or `emoji:<emoji>` (a preset) |
+| `photo` | an uploaded picture, cropped to 192×192 JPEG in the browser, as a `data:` URL (< 100 KB) |
+| `updatedAt` | last save |
+
+Uploaded pictures live in Firestore itself, so **Firebase Storage is not needed** (new Storage
+buckets need the paid Blaze plan). *Delete account* removes both documents and the Firebase login;
+the game saved in that browser stays.
+
 ## How saves sync
 
 - Each save in the browser is uploaded at most every 20 s, and right away when a
@@ -66,8 +83,11 @@ under *Analytics → Custom definitions*.
 
 ## Testing
 
-- `tests/e2e/account.spec.mjs` runs the whole flow against a fake Firebase SDK
-  (`tests/e2e/fake-firebase/`), part of `bash tools/test-all.sh`.
+- `tests/e2e/account.spec.mjs` and `tests/e2e/profile.spec.mjs` run the whole flow against a fake
+  Firebase SDK (`tests/e2e/fake-firebase/`), part of `bash tools/test-all.sh`.
+- The security rules were checked against the real Firestore emulator with
+  `@firebase/rules-unit-testing` (own profile read/write ok; other players, signed-out
+  visitors, bad pictures, extra fields and over-long text refused).
 - Against the real SDK, locally: `npx firebase-tools emulators:start --only auth,firestore
   --project demo-scale` in `firebase/`, then set `window.__SA_FIREBASE__ = { config: { apiKey: 'demo', projectId: 'demo-scale', authDomain: '127.0.0.1' },
   emulator: { auth: 'http://127.0.0.1:9099', firestoreHost: '127.0.0.1', firestorePort: 8080 } }`

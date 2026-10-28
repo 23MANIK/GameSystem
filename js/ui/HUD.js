@@ -17,6 +17,7 @@ import { ROLES } from '../data/roles.js';
 import { getChallenges } from '../game/Challenges.js';
 import { infoButton } from './InfoTips.js';
 import account from '../firebase/account.js';
+import profiles, { avatarHtml } from '../firebase/profile.js';
 
 /** Health worse than this is called out on the chip. */
 const BUSY = 0.8;
@@ -97,6 +98,7 @@ export default class HUD {
     });
     this.renderAccountItem();
     this.offAccount = account.onChange(() => this.renderAccountItem());
+    this.offProfile = profiles.onChange(() => this.renderAccountItem());
 
     const bars = PART_ORDER.map(partId => {
       const part = SERVER_PARTS[partId];
@@ -153,15 +155,15 @@ export default class HUD {
     document.getElementById('hud-resources')?.classList.remove('open');
   }
 
-  /** Menu item: "Sign in with Google", or who is signed in (tap to sign out). */
+  /** Menu item: "Sign in with Google", or who is signed in (tap for their profile). */
   renderAccountItem() {
     const item = this.menuPop?.querySelector('#hud-menu-account');
     if (!item) return;
     item.hidden = !account.enabled || !account.ready;
     const esc = t => String(t).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-    const u = account.user;
-    item.innerHTML = u
-      ? `☁️ <span>${esc(u.name || u.email)}<small>Progress saved to your account · tap to sign out</small></span>`
+    const me = profiles.view();
+    item.innerHTML = me
+      ? `${avatarHtml(me, 'hud-menu-avatar')} <span>${esc(me.name)}<small>Your profile · progress · sign out</small></span>`
       : `🔑 <span>Sign in with Google<small>Save your progress, play on any device</small></span>`;
   }
 
@@ -409,6 +411,7 @@ export default class HUD {
     if (this.container) this.container.innerHTML = '';
     this.menuPop?.remove();
     this.offAccount?.();
+    this.offProfile?.();
     this.healthPop?.remove();
   }
 }

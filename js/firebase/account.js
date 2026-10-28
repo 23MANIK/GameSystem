@@ -159,6 +159,41 @@ class Account {
     if (this.auth) await this.authSdk.signOut(this.auth);
   }
 
+  /**
+   * Delete the signed-in player's account: their profile and cloud save in
+   * Firestore, then the Firebase Auth user. Google may ask them to pick their
+   * account again first (deleting needs a recent sign-in). The game saved in
+   * this browser stays. Returns false if they closed that Google window.
+   */
+  async deleteAccount() {
+    if (!this.user || !this.auth) return false;
+    clearTimeout(this.pushTimer);
+    this.pushTimer = null;
+    const authUser = this.auth.currentUser;
+    const del = () => this.authSdk.deleteUser(authUser);
+    // If Google wants a fresh sign-in, the data is already gone; a closed
+    // window then leaves just the empty login, and the next save recreates the cloud save
+    try {
+      await this.fs.deleteDoc(this.fs.doc(this.db, 'profiles', this.user.uid));
+      await this.fs.deleteDoc(this.userDoc());
+      this.exists = false;
+      await del();
+    } catch (err) {
+      if (err?.code !== 'auth/requires-recent-login') throw err;
+      const provider = new this.authSdk.GoogleAuthProvider();
+      try {
+        await this.authSdk.reauthenticateWithPopup(authUser, provider);
+      } catch (e) {
+        if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') return false;
+        throw e;
+      }
+      await del();
+    }
+    ls.del(LAST_SYNC);
+    this.log('account_deleted');
+    return true;
+  }
+
   /** The signed-in player's Firestore document. */
   userDoc() {
     return this.fs.doc(this.db, 'users', this.user.uid);

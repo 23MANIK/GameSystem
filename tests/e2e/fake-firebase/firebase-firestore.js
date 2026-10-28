@@ -12,3 +12,6 @@ export async function getDoc(ref) {
 export async function setDoc(ref, data, opts) {
   await fetch(BASE + ref.path, { method: 'POST', body: JSON.stringify({ data, merge: Boolean(opts?.merge) }) });
 }
+export async function deleteDoc(ref) {
+  await fetch(BASE + ref.path, { method: 'DELETE' });
+}

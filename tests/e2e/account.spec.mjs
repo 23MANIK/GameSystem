@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const FAKE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fake-firebase');
-const CORS = { 'Access-Control-Allow-Origin': '*' };
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, DELETE' };
 const NIKHIL = { uid: 'uid-nikhil', displayName: 'Test Player', email: 'player@example.com', photoURL: '' };
 
 /** Serve the fake SDK and a shared fake Firestore to this page. */
@@ -18,12 +18,13 @@ async function fakeFirebase(page, cloud, user = NIKHIL) {
   await page.route(/fake-firestore\.test\//, (route) => {
     const req = route.request();
     const key = new URL(req.url()).pathname.slice(1);
+    if (req.method() === 'DELETE') cloud.delete(key);
     if (req.method() === 'POST') {
       const { data, merge } = JSON.parse(req.postData());
       cloud.set(key, merge ? { ...(cloud.get(key) || {}), ...data, progress: { ...(cloud.get(key)?.progress || {}), ...(data.progress || {}) } } : data);
       cloud.writes = (cloud.writes || 0) + 1;
     }
-    route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(req.method() === 'POST' ? {} : (cloud.get(key) || null)) });
+    route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(req.method() === 'GET' ? (cloud.get(key) || null) : {}) });
   });
   await page.addInitScript((u) => {
     window.__SA_FIREBASE__ = { config: { apiKey: 'test', projectId: 'test', measurementId: 'G-TEST' } };
@@ -112,7 +113,8 @@ test('signing out keeps the game on this device and stops uploading', async ({ g
   await game.home();
   await page.click('.acct-google');
   await expect(page.getByTestId('account-signed-in')).toBeVisible();
-  await page.click('.acct-out');
+  await page.getByTestId('account-signed-in').click();
+  await page.click('.pf-signout');
   await expect(page.locator('.acct-google')).toBeVisible();
   await expect(page.locator('#intro-account')).toContainText('Signed out');
   const writes = cloud.writes || 0;
@@ -142,7 +144,7 @@ test('a closed sign-in popup leaves the player signed out without an error', asy
   await expect(page.getByTestId('account-signed-in')).toBeHidden();
 });
 
-test('the ☰ menu in the game signs in and out', async ({ game, page }) => {
+test('the ☰ menu in the game signs in, opens the profile, and signs out', async ({ game, page }) => {
   const cloud = new Map();
   await fakeFirebase(page, cloud);
   await game.newGame('guestbook');
@@ -155,6 +157,8 @@ test('the ☰ menu in the game signs in and out', async ({ game, page }) => {
   await page.click('#hud-menu');
   await expect(item).toContainText('Test Player');
   await item.click();
+  await expect(page.locator('.pf-dialog')).toBeVisible();
+  await page.click('.pf-signout');
   await expect(page.locator('#notification-container')).toContainText('Signed out');
   await page.click('#hud-menu');
   await expect(item).toContainText('Sign in with Google');

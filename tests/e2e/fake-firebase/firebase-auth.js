@@ -6,7 +6,7 @@ let current = null;
 try { current = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { current = null; }
 const notify = () => listeners.forEach(fn => fn(current));
 
-export function getAuth() { return {}; }
+export function getAuth() { return { get currentUser() { return current; } }; }
 export function connectAuthEmulator() {}
 export class GoogleAuthProvider { setCustomParameters() {} }
 export function onAuthStateChanged(auth, fn) {
@@ -27,4 +27,18 @@ export async function signOut() {
   current = null;
   localStorage.removeItem(KEY);
   notify();
+}
+// Deleting an account: window.__FAKE_RECENT_LOGIN__ = false makes the first try
+// ask for a fresh sign-in, like Firebase does after a while.
+export async function deleteUser(user) {
+  if (window.__FAKE_RECENT_LOGIN__ === false) {
+    const e = new Error('requires-recent-login'); e.code = 'auth/requires-recent-login'; throw e;
+  }
+  window.__fakeDeletedUsers = [...(window.__fakeDeletedUsers || []), user.uid];
+  await signOut();
+}
+export async function reauthenticateWithPopup() {
+  if (!window.__FAKE_GOOGLE_USER__) { const e = new Error('closed'); e.code = 'auth/popup-closed-by-user'; throw e; }
+  window.__FAKE_RECENT_LOGIN__ = true;
+  return { user: current };
 }

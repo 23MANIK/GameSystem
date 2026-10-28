@@ -36,6 +36,7 @@ import CrashScreen from './ui/CrashScreen.js';
 import NextStep from './ui/NextStep.js';
 import account, { signInErrorMessage } from './firebase/account.js';
 import AccountChip from './ui/AccountChip.js';
+import { openProfile } from './ui/ProfileDialog.js';
 
 // Seconds of game time at 0 coins, losing money, before the system crashes
 const CRASH_AFTER_SECONDS = 40;
@@ -356,7 +357,7 @@ class ScaleArchitect {
     this.gameState.on('goHome', () => this.goHome());
     // Coins in the top bar → Money panel
     this.gameState.on('openMoney', () => this.toggleMoneyPop());
-    // ☰ menu → Sign in with Google / sign out
+    // ☰ menu → Sign in with Google, or the player's profile (sign out is in there)
     this.gameState.on('accountMenu', ({ signedIn }) => this.accountFromMenu(signedIn));
     // Opening the ☰ menu or the health chip closes the other drop-downs
     this.gameState.on('hudPopOpened', () => { this.toggleLevelPop(false); if (this.moneyPop) this.toggleMoneyPop(false); });
@@ -557,13 +558,18 @@ class ScaleArchitect {
     });
   }
 
-  /** Sign in (or out) from the in-game menu. A newer save in the account replaces this game. */
+  /** Sign in from the in-game menu, or open the profile. A newer save in the account replaces this game. */
   async accountFromMenu(signedIn) {
     try {
       if (signedIn) {
-        this.gameState.save();
-        await account.signOut();
-        this.notifications.show('Signed out. Your game stays saved on this device.', 'info', 4000);
+        openProfile({
+          onSignOut: async () => {
+            this.gameState.save();
+            await account.signOut();
+            this.notifications.show('Signed out. Your game stays saved on this device.', 'info', 4000);
+          },
+          onDeleted: () => this.notifications.show('Your account was deleted. Your game stays saved on this device.', 'info', 5000)
+        });
         return;
       }
       this.gameState.save();
