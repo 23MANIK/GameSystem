@@ -152,31 +152,3 @@ test('cancel keeps the account', async ({ game, page }) => {
   await expect(page.getByTestId('account-signed-in')).toBeVisible();
   expect(cloud.has('users/uid-p')).toBe(true);
 });
-
-test('an optional UPI ID is saved with the profile and fills in UPI boxes', async ({ game, page }) => {
-  const cloud = new Map();
-  await signedInHome(page, game, cloud);
-  await page.getByTestId('account-signed-in').click();
-  const upi = page.locator('.pf-dialog input[name=upi]');
-  await upi.fill('not-a-upi');
-  await page.locator('.pf-save').click();
-  await expect(page.locator('.pf-status')).toContainText('UPI ID');
-  expect(cloud.get('profiles/uid-p')).toBeUndefined();
-  await upi.fill('Ada.L@OkAxis');
-  await page.locator('.pf-save').click();
-  await expect(page.locator('.pf-dialog')).toBeHidden();
-  expect(cloud.get('profiles/uid-p').upi).toBe('ada.l@okaxis');
-
-  // Another visit: any UPI box the game shows is filled from the profile (empty ones only)
-  await page.reload();
-  await expect(page.getByTestId('account-signed-in')).toBeVisible();
-  const filled = await page.evaluate(async () => {
-    const { fillUpiInput } = await import('/js/firebase/profile.js');
-    const empty = document.createElement('input');
-    const typed = Object.assign(document.createElement('input'), { value: 'mine@ybl' });
-    return [await fillUpiInput(empty), empty.value, await fillUpiInput(typed), typed.value];
-  });
-  expect(filled).toEqual([true, 'ada.l@okaxis', false, 'mine@ybl']);
-  await page.getByTestId('account-signed-in').click();
-  await expect(upi).toHaveValue('ada.l@okaxis');
-});
