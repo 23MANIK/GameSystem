@@ -17,7 +17,6 @@ window.__overlapAudit = (() => {
   const FLOATING = {
     toast: '#notification-container .toast:not(.dismissing)',
     guide: '#guide-bubble',
-    nextStep: '#next-step',
     hudPop: '.hud-pop',
     levelPop: '.level-pop',
     infoPop: '.info-pop',

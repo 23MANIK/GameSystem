@@ -141,7 +141,7 @@
   --z-nav: 110;
   --z-hud-extra: 120;   /* spike badge, busiest-part bars */
   --z-panel: 200;       /* side panel / phone bottom sheet */
-  --z-coach: 300;       /* tutorial guide, Next step card */
+  --z-coach: 300;       /* tutorial guide */
   --z-notification: 340; /* toasts */
   --z-popover: 360;     /* ☰ menu, health, level card, money */
   --z-modal: 400;       /* Server Builder, level intro, level complete */

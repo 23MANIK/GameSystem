@@ -5,7 +5,7 @@
  * Every pop-up belongs to one layer, from bottom to top (z-index tokens in
  * css/index.css):
  *
- *   world → top bar / bottom bar → side panel → coach (guide, Next step)
+ *   world → top bar / bottom bar → side panel → coach (tutorial guide)
  *   → toasts → popovers (☰ menu, health, level card) → modals → screens
  *   → tooltips (i) → crash screen
  *
@@ -15,8 +15,7 @@
  *      popover is open, new toasts wait and visible toasts step out of sight.
  *      When it closes, the newest waiting toasts show (they are always in the
  *      Alerts tab anyway).
- *   2. Coach cards (guide, Next step) step aside while a big popover is open,
- *      the same way they already do for panels and modals.
+ *   2. The tutorial guide steps aside while a big popover is open.
  *
  * It sets body classes the CSS reacts to:
  *   layer-modal    a modal or phone sheet is open
