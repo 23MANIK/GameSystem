@@ -238,16 +238,20 @@ export default class SystemDiagram {
   }
 
   /**
-   * Phones (top-to-bottom layout): room at the bottom taken by the guide bubble,
-   * so the last row isn't hidden under it.
+   * Phones (top-to-bottom layout): room at the bottom taken by the coach card
+   * (guide bubble or Next step card), so the last row isn't hidden under it.
    */
   bottomReserve(W, H) {
     if (!(W < 600 && H > W * 1.15)) return 0;
-    const guide = document.getElementById('guide-bubble');
-    if (!guide || guide.hidden || getComputedStyle(guide).display === 'none') return 0;
-    const top = guide.getBoundingClientRect().top;
     const bottom = this.root.getBoundingClientRect().bottom;
-    return Math.max(0, Math.round((bottom - top + 8) / 20) * 20);
+    let reserve = 0;
+    for (const id of ['guide-bubble', 'next-step']) {
+      const card = document.getElementById(id);
+      if (!card || card.hidden || getComputedStyle(card).display === 'none') continue;
+      const top = card.getBoundingClientRect().top;
+      reserve = Math.max(reserve, Math.round((bottom - top + 8) / 20) * 20);
+    }
+    return reserve;
   }
 
   layout(p, W, H) {

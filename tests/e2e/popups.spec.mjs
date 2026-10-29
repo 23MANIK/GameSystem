@@ -167,3 +167,20 @@ test('every pop-up uses a z-index token from the one layer scale', async ({ page
     expect(order[i][1], `${order[i][0]} must sit above ${order[i - 1][0]}`).toBeGreaterThan(order[i - 1][1]);
   }
 });
+
+// The Next step card must never hide the map (Nikhil, 2026-10-29: it covered My Server and its CPU bar)
+for (const [size, viewport] of Object.entries({ 'iPhone Safari': { width: 390, height: 664 }, phone: { width: 390, height: 844 }, 'small phone': { width: 360, height: 640 } })) {
+  test(`${size}: the Next step card leaves every map card visible`, async ({ game, page }) => {
+    await page.setViewportSize(viewport);
+    await game.newGame('ad_clicks');
+    await page.click('#guide-skip');
+    await game.playLevel({ maxTicks: 25 });
+    await expect(page.locator('#next-step')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => {
+      const top = document.getElementById('next-step').getBoundingClientRect().top;
+      return [...document.querySelectorAll('.sd-node')]
+        .filter(n => n.getBoundingClientRect().bottom > top)
+        .map(n => n.textContent.trim().split('\n')[0]);
+    })).toEqual([]);
+  });
+}

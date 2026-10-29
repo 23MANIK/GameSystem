@@ -307,10 +307,25 @@
     right: 8px;
     width: auto;
     bottom: calc(68px + var(--safe-bottom));
-    padding: 10px 12px;
-    gap: 8px;
+    padding: 8px 10px;
+    gap: 10px;
+    /* One compact row (goal on the left, button on the right) so the map above stays visible */
+    flex-direction: row;
+    align-items: center;
   }
-  .ns-label { font-size: 13px; }
+  .next-step .ns-body { flex: 1; gap: 4px; }
+  .ns-kicker { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ns-label { font-size: 13px; line-height: 1.25; }
+  .next-step .ns-act {
+    flex: none;
+    width: auto;
+    max-width: 42%;
+    min-height: 40px;
+    padding: 6px 10px;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: normal;
+  }
 
   .lc-key strong { font-size: 15px; }
   .lc-v4 .level-up-number { font-size: 44px; }
