@@ -3,7 +3,7 @@ import { openFeedback } from './Feedback.js';
  * Scale Architect - Top HUD (v4: minimal)
  *
  * The bar holds only what a player checks every few seconds:
- *   ☰ menu · level + goal progress · coins · users / limit · speed
+ *   ☰ menu · level + goal progress · coins · speed (users / limit live in the health popover)
  * Everything else is one tap away:
  *   - ☰ menu: Home, all levels, money, feedback
  *   - health chip (#hud-resources): the one thing that needs attention now,
@@ -110,6 +110,9 @@ export default class HUD {
     this.healthPop.innerHTML = `
       <div class="hh-head"><strong id="hud-res-title">🖥️ Your server</strong>${infoButton('resources')}</div>
       <div class="hud-busiest-bars">${bars}</div>
+      <div class="hh-row">
+        <span>👥 Users / limit ${infoButton('userLimit')}</span><strong class="hud-value" id="hud-users">–</strong>
+      </div>
       <div class="hh-row">
         <span>📶 Latency ${infoButton('latency')}</span><strong id="hud-latency">–</strong>
       </div>
@@ -221,13 +224,6 @@ export default class HUD {
               <span class="hud-value value" id="hud-coins">${this.formatNumber(this.gameState.coins)}</span>
             </div>
           </button>
-          <div class="hud-stat users" title="Users online / how many your system can serve">
-            <span class="hud-icon hud-stat-icon">👥</span>
-            <div class="hud-stat-info">
-              <span class="hud-label label">Users / limit ${infoButton('userLimit')}</span>
-              <span class="hud-value value" id="hud-users"></span>
-            </div>
-          </div>
           <button type="button" class="hud-speed" id="hud-speed" title="Game speed: tap for 2× or 4× to finish levels faster"></button>
         </div>
       </div>

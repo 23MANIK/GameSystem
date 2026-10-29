@@ -318,7 +318,7 @@ export function evaluateChallenges(gs) {
 
 /**
  * Like evaluateChallenges, but read-only: nothing is latched. For UI that only
- * displays progress (the Next step card), so showing a goal never changes
+ * displays progress (Goals, the top bar), so showing a goal never changes
  * when the game counts it as done.
  */
 export function peekChallenges(gs) {

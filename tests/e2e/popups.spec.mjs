@@ -1,5 +1,5 @@
 // Pop-ups never block each other: in every state where two pop-ups can meet
-// (tutorial guide, toasts, Next step card, popovers, side panel, level intro,
+// (tutorial guide, toasts, popovers, side panel, level intro,
 // level complete, Server Builder, dialogs), every visible button can still be
 // pressed and no two floating cards overlap. Runs on desktop, tablet and phones.
 // The rules are in docs/popups/README.md; the checker is overlap-audit.js.
@@ -46,7 +46,7 @@ const SCENES = {
     await game.newGame('guestbook');
     await toasts(page);
   },
-  'Next step card + toasts': async (game, page) => {
+  'playing + toasts': async (game, page) => {
     await game.newGame('guestbook');
     await page.click('#guide-skip');
     await toasts(page);
@@ -54,7 +54,7 @@ const SCENES = {
   'Server Builder + toasts': async (game, page) => {
     await game.newGame('guestbook');
     await page.click('#guide-skip');
-    await page.click('#next-step .ns-act');
+    await page.click('#nav-server');
     await expect(page.locator('.server-builder-modal')).toBeVisible();
     await toasts(page);
   },
@@ -64,7 +64,7 @@ const SCENES = {
     await toasts(page);
     await page.click('#hud-menu');
   },
-  'level popover over the Next step card': async (game, page) => {
+  'level popover + toasts': async (game, page) => {
     await game.newGame('guestbook');
     await page.click('#guide-skip');
     await toasts(page);
@@ -168,18 +168,21 @@ test('every pop-up uses a z-index token from the one layer scale', async ({ page
   }
 });
 
-// The Next step card must never hide the map (Nikhil, 2026-10-29: it covered My Server and its CPU bar)
-for (const [size, viewport] of Object.entries({ 'iPhone Safari': { width: 390, height: 664 }, phone: { width: 390, height: 844 }, 'small phone': { width: 360, height: 640 } })) {
-  test(`${size}: the Next step card leaves every map card visible`, async ({ game, page }) => {
+// Nothing floats over the map on phones once the tutorial is done (Nikhil, 2026-10-29:
+// the old Next step card hid My Server and its CPU bar, so it was removed)
+for (const [size, viewport] of Object.entries({ 'iPhone Safari': { width: 390, height: 664 }, 'small phone': { width: 360, height: 640 } })) {
+  test(`${size}: every map card is visible above the bottom bar`, async ({ game, page }) => {
     await page.setViewportSize(viewport);
     await game.newGame('ad_clicks');
     await page.click('#guide-skip');
     await game.playLevel({ maxTicks: 25 });
-    await expect(page.locator('#next-step')).toBeVisible();
     await expect.poll(() => page.evaluate(() => {
-      const top = document.getElementById('next-step').getBoundingClientRect().top;
+      const top = document.getElementById('nav-bar').getBoundingClientRect().top;
+      const covers = el => el && !el.hidden && el.getClientRects().length > 0;
+      const floating = ['#guide-bubble', '#next-step'].map(s => document.querySelector(s)).filter(covers);
+      const limit = Math.min(top, ...floating.map(f => f.getBoundingClientRect().top));
       return [...document.querySelectorAll('.sd-node')]
-        .filter(n => n.getBoundingClientRect().bottom > top)
+        .filter(n => n.getBoundingClientRect().bottom > limit)
         .map(n => n.textContent.trim().split('\n')[0]);
     })).toEqual([]);
   });

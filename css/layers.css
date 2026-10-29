@@ -4,7 +4,7 @@
 
    Safe zones, so pop-ups that can show at the same time never share space:
      top    : top bar, then toasts right under it
-     bottom : coach cards (guide or Next step, never both) above the bottom bar
+     bottom : the tutorial guide above the bottom bar
      right  : side panel on desktop; toasts move to its left
      popovers hang from the button that opened them; modals take the screen
    ═══════════════════════════════════════════════════════════════ */
@@ -28,6 +28,5 @@
    already showing steps out of sight. */
 body.toasts-held .notification-container { visibility: hidden; }
 
-/* Rule 2: coach cards step aside while a big popover is open */
-body.layer-popover .guide-bubble,
-body.layer-popover .next-step { visibility: hidden; }
+/* Rule 2: the guide steps aside while a big popover is open */
+body.layer-popover .guide-bubble { visibility: hidden; }

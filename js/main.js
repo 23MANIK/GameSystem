@@ -33,8 +33,6 @@ import ProductPicker from './ui/ProductPicker.js';
 import CreateGame from './ui/CreateGame.js';
 import { ensureGame, isGeneratedId, savedProductId, linkedGameId } from './designgame/client.js';
 import CrashScreen from './ui/CrashScreen.js';
-import NextStep from './ui/NextStep.js';
-import { openPopover, watchLayers } from './ui/Layers.js';
 
 // Seconds of game time at 0 coins, losing money, before the system crashes
 const CRASH_AFTER_SECONDS = 40;
@@ -173,12 +171,11 @@ class ScaleArchitect {
 
       // Bought a machine but never placed it (e.g. reloaded mid-step)
       this.resumePlacement();
-      this.nextStep.update();
 
       this.updateTraffic();
 
       if (this.gameState.levelCompleted) {
-        // A finished level stays frozen at its final result; the Next step card offers the next level
+        // A finished level stays frozen at its final result; Goals offers the next level
         if (!this.nextPlayableLevel()) this.notifications.show('✅ Level complete. Your results are saved and paused. Next level coming soon.', 'success', 6000);
       } else {
         // A new level opens with its intro card; the clock starts after it
@@ -256,19 +253,6 @@ class ScaleArchitect {
       this.openServerBuilder(tab);
     });
 
-    // The one thing to do now, above the bottom bar (steps aside while the guide talks)
-    this.nextStep = new NextStep(document.getElementById('next-step'), this.gameState, {
-      goalsPanel: this.goalsPanel,
-      isHidden: () => this.nextStepHidden(),
-      isPlacing: () => Boolean(this.placing),
-      onAct: (tab, place) => {
-        if (place) { this.resumePlacement(); return; }
-        this.openServerBuilder(tab || null);
-      },
-      onOpenGoals: () => { if (this.activePanel !== 'goals') this.togglePanel('goals'); },
-      onStartNext: () => this.startNextLevel()
-    });
-
     this.crashScreen = new CrashScreen({
       onRetry: () => {
         if (!this.gameState.restoreLevelStart()) return;
@@ -288,25 +272,6 @@ class ScaleArchitect {
 
     this.guide = new GuideBubble(document.getElementById('guide-bubble'), this.tutorial, this.gameState);
     this.levelIntro = new LevelIntro();
-    // The guide re-renders on tutorial changes; the Next step card follows it
-    this.tutorial.onChange(() => setTimeout(() => this.nextStep.update(), 0));
-    // A popover opening or closing moves the Next step card aside or back
-    watchLayers(() => this.nextStep.update());
-  }
-
-  /** The Next step card hides while something else is guiding the player. */
-  nextStepHidden() {
-    const guide = document.getElementById('guide-bubble');
-    const overlay = document.getElementById('level-up-overlay');
-    return Boolean(
-      (guide && !guide.hidden) ||
-      this.activePanel ||
-      document.body.classList.contains('builder-open') ||
-      document.body.classList.contains('level-intro-open') ||
-      overlay?.classList.contains('active') ||
-      this.serverBuilder?.isOpen ||
-      Boolean(openPopover())
-    );
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -585,7 +550,7 @@ class ScaleArchitect {
 
   openServerBuilder(tab = null) {
     if (this.gameState.levelCompleted) {
-      this.notifications.show('✅ This level is complete and paused. Start the next level from the button at the bottom.', 'info', 4000);
+      this.notifications.show('✅ This level is complete and paused. Start the next level from Goals.', 'info', 4000);
       return;
     }
     if (this.placing) {
@@ -626,7 +591,7 @@ class ScaleArchitect {
     this.updateTraffic();
     this.updateActivePanel();
     this.startLevelWithIntro();
-    this.nextStep?.update();
+   
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -665,7 +630,7 @@ class ScaleArchitect {
       b.classList.toggle('active', b.dataset.panel === panelType);
     });
     this.guide.refreshHighlight();
-    this.nextStep?.update();
+   
   }
 
   closePanel() {
@@ -677,7 +642,7 @@ class ScaleArchitect {
     this.activePanel = null;
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     this.guide.refreshHighlight();
-    this.nextStep?.update();
+   
   }
 
   /** Unread count on the Notifications button (live list if that tab is open). */
@@ -785,7 +750,7 @@ class ScaleArchitect {
 
   startGameLoop() {
     this.isRunning = true;
-    this.nextStep?.update();
+   
     this.tickInterval = setInterval(() => {
       // Speed button: 2× or 4× runs that many game steps per tick
       const steps = this.gameState.speed || 1;
@@ -1075,7 +1040,7 @@ class ScaleArchitect {
     overlay.scrollTop = 0;
     const close = () => {
       overlay.style.animation = 'fade-out 0.3s ease-out forwards';
-      setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('active'); this.nextStep?.update(); }, 300);
+      setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('active'); }, 300);
     };
     const btn = document.getElementById('level-up-continue');
     const stay = document.getElementById('level-up-stay');
@@ -1089,7 +1054,7 @@ class ScaleArchitect {
       if (stay) stay.hidden = true;
     }
     this.hud.update();
-    this.nextStep?.update();
+   
     btn.focus({ preventScroll: true });
   }
 

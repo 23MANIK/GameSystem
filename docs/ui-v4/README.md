@@ -25,3 +25,5 @@ Research, before/after notes and mockups: https://claude.ai/artifact/C8yiLi7BiBG
 - It reads goals with `peekChallenges()` (read-only). Do not use `evaluateChallenges()` in display-only UI: it latches goals as done and changes when levels finish.
 - Styles: `css/v4.css`, loaded last.
 - Tests: `tests/e2e/v4-ui.spec.mjs`.
+
+**Update 2026-10-29:** the Next step card was removed at Nikhil's request (it covered the map on phones). The next goal is shown only in Goals ("Next up"), and Goals offers "Start Level N" after a level is done. See docs/popups/README.md.

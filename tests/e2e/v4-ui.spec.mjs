@@ -1,4 +1,4 @@
-// V4 minimal UI: menu, health chip, Next step card, level-complete screen,
+// V4 minimal UI: menu, health chip, Goals as the only "next step", level-complete screen,
 // Continue-first start screen and the game picker.
 import { test, expect } from './fixtures.mjs';
 
@@ -37,30 +37,25 @@ test('health chip appears once there is a server and opens the full meters', asy
   await expect(pop).toBeHidden();
 });
 
-test('Next step card: hidden while the guide talks, then shows the goal and a button that acts', async ({ game, page }) => {
-  await game.newGame('guestbook');
-  const card = page.locator('#next-step');
-  await expect(page.locator('#guide-bubble')).toBeVisible();
-  await expect(card).toBeHidden();
-  await page.click('#guide-skip');
-  await expect(card).toBeVisible();
-  await expect(card.locator('.ns-act')).toContainText('Build your server');
-  await card.locator('.ns-act').click();
-  await expect(page.locator('.server-builder-modal')).toBeVisible();
-  await expect(card).toBeHidden();
-});
-
-test('Next step card: tapping it opens Goals, and it steps aside while Goals is open', async ({ game, page }) => {
+test('top bar has no users count; users / limit live in the health popover', async ({ game, page }) => {
   await game.newGame('guestbook');
   await page.click('#guide-skip');
-  await page.click('#next-step .ns-body');
-  await expect(page.locator('#side-panel')).toHaveClass(/open/);
-  await expect(page.locator('#next-step')).toBeHidden();
-  await page.click('#panel-close-btn');
-  await expect(page.locator('#next-step')).toBeVisible();
+  await game.playLevel({ maxTicks: 20 });
+  await expect(page.locator('.hud .hud-stat.users')).toHaveCount(0);
+  await page.click('#hud-resources');
+  await expect(page.locator('.hud-health-pop #hud-users')).toBeVisible();
+  await expect(page.locator('.hud-health-pop #hud-users')).toContainText('/');
 });
 
-test('level complete: key stats up front, the rest folded; Look around → Next step offers the next level', async ({ game, page }) => {
+test('no floating Next step card: the next goal lives only in Goals', async ({ game, page }) => {
+  await game.newGame('guestbook');
+  await page.click('#guide-skip');
+  await expect(page.locator('#next-step')).toHaveCount(0);
+  await page.click('#nav-goals');
+  await expect(page.locator('#side-panel .gp-focus')).toContainText('Next up');
+});
+
+test('level complete: key stats up front, the rest folded; Look around → Goals offers the next level', async ({ game, page }) => {
   await game.newGame('guestbook');
   expect((await game.playLevel()).done).toBe(true);
   const overlay = page.locator('#level-up-overlay');
@@ -69,9 +64,8 @@ test('level complete: key stats up front, the rest folded; Look around → Next 
   await expect(overlay.locator('details.lc-all')).not.toHaveAttribute('open', /.*/);
   await page.click('#level-up-stay');
   await expect(overlay).toBeHidden();
-  const card = page.locator('#next-step');
-  await expect(card).toBeVisible();
-  await card.locator('.ns-act').click();
+  await page.click('#nav-goals');
+  await page.click('#goals-next');
   await expect(page.locator('#li-start')).toBeVisible();
 });
 
@@ -107,12 +101,11 @@ test('picker with a save: the saved game is marked in progress and nothing says 
   await expect(page.locator('.pp-saved')).toHaveAttribute('data-product', 'url_shortener');
 });
 
-test('phone: top bar, health chip and Next step card fit without sideways scrolling', async ({ game, page }) => {
+test('phone: top bar and health chip fit without sideways scrolling', async ({ game, page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await game.newGame('url_shortener');
   await page.click('#guide-skip');
   await game.playLevel({ maxTicks: 20 });
-  await expect(page.locator('#next-step')).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   const box = await page.locator('#hud-speed').boundingBox();

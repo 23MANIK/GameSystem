@@ -239,13 +239,13 @@ export default class SystemDiagram {
 
   /**
    * Phones (top-to-bottom layout): room at the bottom taken by the coach card
-   * (guide bubble or Next step card), so the last row isn't hidden under it.
+   * (the tutorial guide), so the last row isn't hidden under it.
    */
   bottomReserve(W, H) {
     if (!(W < 600 && H > W * 1.15)) return 0;
     const bottom = this.root.getBoundingClientRect().bottom;
     let reserve = 0;
-    for (const id of ['guide-bubble', 'next-step']) {
+    for (const id of ['guide-bubble']) {
       const card = document.getElementById(id);
       if (!card || card.hidden || getComputedStyle(card).display === 'none') continue;
       const top = card.getBoundingClientRect().top;

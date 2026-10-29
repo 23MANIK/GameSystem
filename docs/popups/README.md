@@ -30,14 +30,14 @@ PR #21 (login) and #22 (profile) add native `<dialog>` modals. Those use the bro
 ## The rules
 
 1. **One layer order.** Every pop-up uses a token from `css/index.css`, bottom to top:
-   world → top/bottom bars (`--z-hud`) → side panel (`--z-panel`) → coach cards: guide, Next step (`--z-coach`) → toasts (`--z-notification`) → popovers: ☰, health, level, money (`--z-popover`) → modals: Server Builder, level intro, level complete (`--z-modal`) → full screens: start, picker, create (`--z-screen`) → (i) tooltips (`--z-tooltip`) → crash (`--z-crash`). No raw z-index numbers for pop-ups.
+   world → top/bottom bars (`--z-hud`) → side panel (`--z-panel`) → coach: the tutorial guide (`--z-coach`) → toasts (`--z-notification`) → popovers: ☰, health, level, money (`--z-popover`) → modals: Server Builder, level intro, level complete (`--z-modal`) → full screens: start, picker, create (`--z-screen`) → (i) tooltips (`--z-tooltip`) → crash (`--z-crash`). No raw z-index numbers for pop-ups.
 2. **One thing talks at a time.** While a modal, a covering bottom sheet (screens under 760 px), a popover or an (i) tooltip is open, toasts wait. Toasts already showing step out of sight. When it closes, the newest two waiting toasts show; anything that waited over 30 s is dropped. Every toast is in the Alerts tab anyway.
 3. **Safe zones.** Pop-ups that can be on screen together never share space:
    - top: the top bar, then toasts right under it (top-right on desktop, full width on phones);
-   - bottom: one coach card (guide or Next step, never both) above the bottom bar;
+   - bottom: the tutorial guide above the bottom bar (nothing else floats over the map);
    - right (desktop): the side panel; toasts move to its left while it is open;
    - popovers hang from the button that opened them; modals take the whole screen.
-4. **Coach cards step aside** while a big popover is open, as they already did for panels and modals.
+4. **The guide steps aside** while a big popover is open.
 5. **Tested.** `tests/e2e/popups.spec.mjs` opens every pairing above on all four screen sizes and fails if any visible button is covered by something other than its own modal's backdrop, or if two floating cards overlap.
 
 ## Decisions made without Nikhil
@@ -45,6 +45,10 @@ PR #21 (login) and #22 (profile) add native `<dialog>` modals. Those use the bro
 - Toasts moved from bottom-right to top-right on desktop. The bottom-left is the coach zone, and on tablets (768 px) a bottom toast and the guide collided.
 - Toasts wait (are not dropped) during a modal, but only the newest two and only for 30 s, so a long Server Builder visit doesn't end with a stale burst.
 - The phone bottom sheet still covers the bottom bar. That is a modal sheet by design (close with ✕, swipe or tapping the dimmed area).
+
+## Update 2026-10-29: Next step card removed
+
+On the dev site Nikhil found the Next step card hid the map on his iPhone (My Server and its CPU bar). He asked for it to go: the next goal now lives only in Goals ("Next up"), and after "Look around first" the next level starts from Goals. Nothing floats over the map once the tutorial is done; a test checks every map card stays above the bottom bar on two phone sizes.
 
 ## Code
 
